@@ -1,5 +1,5 @@
 // src/adapters/baseAdapter.js
-// LM-Source — PlatformAdapter base class
+// AnyLLM — PlatformAdapter base class
 //
 // Defines the interface every platform adapter must implement.
 // Extend this class — do NOT use it directly.
@@ -12,7 +12,7 @@ export class PlatformAdapter {
    * @returns {'claude' | 'chatgpt' | 'gemini' | 'unknown'}
    */
   getPlatformIdentifier() {
-    throw new Error('[LM-Source] getPlatformIdentifier() must be implemented by the adapter.');
+    throw new Error('[AnyLLM] getPlatformIdentifier() must be implemented by the adapter.');
   }
 
   /**
@@ -21,7 +21,7 @@ export class PlatformAdapter {
    * @returns {string}
    */
   getConversationId() {
-    throw new Error('[LM-Source] getConversationId() must be implemented by the adapter.');
+    throw new Error('[AnyLLM] getConversationId() must be implemented by the adapter.');
   }
 
   /**
@@ -30,7 +30,7 @@ export class PlatformAdapter {
    * @returns {Element | null}
    */
   getChatContainer() {
-    throw new Error('[LM-Source] getChatContainer() must be implemented by the adapter.');
+    throw new Error('[AnyLLM] getChatContainer() must be implemented by the adapter.');
   }
 
   /**
@@ -39,7 +39,7 @@ export class PlatformAdapter {
    * @returns {Element[]}
    */
   getMessageElements() {
-    throw new Error('[LM-Source] getMessageElements() must be implemented by the adapter.');
+    throw new Error('[AnyLLM] getMessageElements() must be implemented by the adapter.');
   }
 
   /**
@@ -55,7 +55,7 @@ export class PlatformAdapter {
    * } | null}
    */
   extractMessageData(element) {
-    throw new Error('[LM-Source] extractMessageData() must be implemented by the adapter.');
+    throw new Error('[AnyLLM] extractMessageData() must be implemented by the adapter.');
   }
 
   /**
@@ -63,7 +63,7 @@ export class PlatformAdapter {
    * @returns {boolean}
    */
   detectTokenLimitWarning() {
-    throw new Error('[LM-Source] detectTokenLimitWarning() must be implemented by the adapter.');
+    throw new Error('[AnyLLM] detectTokenLimitWarning() must be implemented by the adapter.');
   }
 
   // ── Shared utility helpers available to all adapters ──────────────────────
@@ -138,7 +138,7 @@ export class PlatformAdapter {
       el.id ||
       el.getAttribute('data-id') ||
       el.getAttribute('data-message-id') ||
-      `lms-msg-${index}`
+      `anyllm-msg-${index}`
     );
   }
 }

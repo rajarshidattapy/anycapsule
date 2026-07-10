@@ -1,5 +1,5 @@
 // src/content.js
-// LM-Source — Content Script
+// AnyLLM — Content Script
 //
 // Entry point injected into Claude.ai, ChatGPT, and Google Gemini pages.
 // Responsibilities:
@@ -8,8 +8,8 @@
 //  3. Process any messages already in the DOM on first load.
 //  4. Run a debounced MutationObserver on the chat container to detect new messages.
 //  5. Expose a lightweight internal event bus so feature modules (P2.2–P2.7)
-//     can subscribe to 'lms:messageAdded' and 'lms:tokenLimitWarning' events.
-//  6. (P2.2) Listen for LMS_EXTRACT_CONTEXT messages and trigger context extraction.
+//     can subscribe to 'anyllm:messageAdded' and 'anyllm:tokenLimitWarning' events.
+//  6. (P2.2) Listen for ANYLLM_EXTRACT_CONTEXT messages and trigger context extraction.
 //  7. (P2.3) Inject per-message toolbar with Pin action; manage Pinboard panel.
 //  8. (P2.4) Soft-delete toolbar action; bulk-delete mode; show/hide toggle.
 //  9. (P2.5) Inline edit toolbar action; restore edited text on page load.
@@ -34,7 +34,7 @@ import HandoffBanner         from './components/HandoffBanner.js';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const LOG_PREFIX = '[LM-Source]';
+const LOG_PREFIX = '[AnyLLM]';
 
 /**
  * How long (ms) to wait after the last DOM mutation before processing.
@@ -76,12 +76,12 @@ if (!adapter) {
 // Events are fired from within this content script.
 //
 // Available events:
-//   'lms:messageAdded'       — detail: { messageId, role, text, element }
-//   'lms:tokenLimitWarning'  — detail: { platform, conversationId }
-//   'lms:adapterReady'       — detail: { adapter, platform, conversationId }
+//   'anyllm:messageAdded'       — detail: { messageId, role, text, element }
+//   'anyllm:tokenLimitWarning'  — detail: { platform, conversationId }
+//   'anyllm:adapterReady'       — detail: { adapter, platform, conversationId }
 
 /**
- * Fire an LM-Source custom event on the document.
+ * Fire an AnyLLM custom event on the document.
  *
  * @param {string} eventName
  * @param {object} detail
@@ -125,7 +125,7 @@ async function init(adapter) {
   );
 
   // Let feature modules know we're ready
-  emit('lms:adapterReady', { adapter, platform, conversationId });
+  emit('anyllm:adapterReady', { adapter, platform, conversationId });
 
   // Process messages already in the DOM
   processCurrentMessages(adapter);
@@ -161,7 +161,7 @@ function runContextExtraction(adapterRef) {
 
 // Listen for messages from the popup / background
 chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
-  if (request?.type === 'LMS_EXTRACT_CONTEXT') {
+  if (request?.type === 'ANYLLM_EXTRACT_CONTEXT') {
     if (!adapter) {
       sendResponse({ success: false, error: 'No adapter active on this page.' });
       return true;
@@ -176,20 +176,20 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
     return true; // keep channel open for async
   }
 
-  if (request?.type === 'LMS_TOGGLE_PANEL') {
+  if (request?.type === 'ANYLLM_TOGGLE_PANEL') {
     ContextSidePanel.toggle();
     sendResponse({ success: true });
     return true;
   }
 
-  if (request?.type === 'LMS_OPEN_PINBOARD') {
+  if (request?.type === 'ANYLLM_OPEN_PINBOARD') {
     PinboardPanel.toggle();
     sendResponse({ success: true });
     return true;
   }
 
   // P2.4 — Toggle show/hide deleted messages
-  if (request?.type === 'LMS_TOGGLE_DELETED') {
+  if (request?.type === 'ANYLLM_TOGGLE_DELETED') {
     const nowVisible = !DeleteService.getDeletedVisible();
     DeleteService.setDeletedVisible(nowVisible);
     sendResponse({ success: true, visible: nowVisible });
@@ -197,7 +197,7 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   }
 
   // P2.4 — Enter/exit bulk-delete mode
-  if (request?.type === 'LMS_BULK_DELETE_MODE') {
+  if (request?.type === 'ANYLLM_BULK_DELETE_MODE') {
     if (!adapter) { sendResponse({ success: false }); return true; }
     if (DeleteService.isBulkMode()) {
       DeleteService.exitBulkMode();
@@ -215,12 +215,12 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   }
 
   // P2.5 — Revert an edited message from the popup (emergency fallback)
-  if (request?.type === 'LMS_REVERT_EDIT') {
+  if (request?.type === 'ANYLLM_REVERT_EDIT') {
     if (!adapter) { sendResponse({ success: false }); return true; }
     const { messageId } = request;
     const platform       = adapter.getPlatformIdentifier();
     const conversationId = adapter.getConversationId();
-    const el = document.querySelector(`[data-lms-msg-id="${messageId}"]`);
+    const el = document.querySelector(`[data-anyllm-msg-id="${messageId}"]`);
     EditService.revertEdit(messageId, platform, conversationId, el)
       .then(() => sendResponse({ success: true }))
       .catch((e) => {
@@ -231,7 +231,7 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   }
 
   // P2.6 — Open Highlights Panel
-  if (request?.type === 'LMS_OPEN_HIGHLIGHTS') {
+  if (request?.type === 'ANYLLM_OPEN_HIGHLIGHTS') {
     HighlightsPanel.toggle();
     sendResponse({ success: true });
     return true;
@@ -242,7 +242,7 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
 
 // Auto-render the side panel (without opening it) once the adapter is ready,
 // so the floating toggle button appears as soon as the page loads.
-document.addEventListener('lms:adapterReady', (e) => {
+document.addEventListener('anyllm:adapterReady', (e) => {
   const { adapter: readyAdapter, platform, conversationId } = e.detail;
 
   // P2.2 — Context side panel auto-render
@@ -272,7 +272,7 @@ document.addEventListener('lms:adapterReady', (e) => {
 });
 
 // React to newly added messages: attach toolbar
-document.addEventListener('lms:messageAdded', (e) => {
+document.addEventListener('anyllm:messageAdded', (e) => {
   const { messageId, role, element } = e.detail;
   if (!element || !adapter) return;
 
@@ -320,7 +320,7 @@ function waitForChatContainer(adapter) {
 // ── Message processing ────────────────────────────────────────────────────────
 
 /**
- * Scan all current message elements and emit 'lms:messageAdded' for any
+ * Scan all current message elements and emit 'anyllm:messageAdded' for any
  * not yet seen.
  *
  * @param {import('./adapters/baseAdapter.js').PlatformAdapter} adapter
@@ -339,7 +339,7 @@ function processCurrentMessages(adapter) {
         `${LOG_PREFIX} [${data.role.toUpperCase()}] ${data.messageId}: ` +
         `"${data.text.slice(0, 80)}${data.text.length > 80 ? '…' : ''}"`
       );
-      emit('lms:messageAdded', data);
+      emit('anyllm:messageAdded', data);
     }
   });
 }
@@ -361,7 +361,7 @@ function processNewMessage(adapter, el, index) {
     `"${data.text.slice(0, 80)}${data.text.length > 80 ? '…' : ''}"`
   );
 
-  emit('lms:messageAdded', data);
+  emit('anyllm:messageAdded', data);
   checkTokenLimit(adapter);
 }
 
@@ -378,7 +378,7 @@ function checkTokenLimit(adapter) {
     _tokenLimitWarned = true;
     const conversationId = adapter.getConversationId();
     console.warn(`${LOG_PREFIX} ⚠ Token limit warning detected! Conversation: ${conversationId}`);
-    emit('lms:tokenLimitWarning', {
+    emit('anyllm:tokenLimitWarning', {
       platform: adapter.getPlatformIdentifier(),
       conversationId,
     });
@@ -518,7 +518,7 @@ async function initPinFeature(adapterRef, platform, conversationId) {
         // Unpin
         await PinService.unpinMessage(existing.id, platform, conversationId);
         MessageToolbar.setMessagePinnedState(messageId, false);
-        button.classList.remove('lms-tb-pinned');
+        button.classList.remove('anyllm-tb-pinned');
         button.setAttribute('data-tooltip', 'Pin message');
         PinboardPanel.removePin(existing.id);
         console.log(`${LOG_PREFIX} Unpinned message ${messageId}`);
@@ -531,7 +531,7 @@ async function initPinFeature(adapterRef, platform, conversationId) {
           messageId, platform, conversationId, role, text,
         });
         MessageToolbar.setMessagePinnedState(messageId, true);
-        button.classList.add('lms-tb-pinned');
+        button.classList.add('anyllm-tb-pinned');
         button.setAttribute('data-tooltip', 'Unpin message');
         PinboardPanel.addPin(pin);
         console.log(`${LOG_PREFIX} Pinned message ${messageId}`);
@@ -597,7 +597,7 @@ async function initPinFeature(adapterRef, platform, conversationId) {
  *   1. Register the 🗑 delete action on the shared MessageToolbar
  *   2. Re-apply hidden state to already-deleted messages (persisted from last visit)
  *
- * Called from the lms:adapterReady handler after initPinFeature.
+ * Called from the anyllm:adapterReady handler after initPinFeature.
  *
  * @param {import('./adapters/baseAdapter.js').PlatformAdapter} adapterRef
  * @param {string} platform
@@ -617,20 +617,20 @@ async function initDeleteFeature(adapterRef, platform, conversationId) {
         // Restore
         await DeleteService.restoreMessage(messageId, platform, conversationId);
         button.setAttribute('data-tooltip', 'Delete message (local only)');
-        button.classList.remove('lms-tb-active');
+        button.classList.remove('anyllm-tb-active');
         console.log(`${LOG_PREFIX} Restored message ${messageId}`);
       } else {
         // Soft-delete
         await DeleteService.softDeleteMessage(messageId, platform, conversationId);
         button.setAttribute('data-tooltip', 'Restore message');
-        button.classList.add('lms-tb-active');
+        button.classList.add('anyllm-tb-active');
         console.log(`${LOG_PREFIX} Soft-deleted message ${messageId}`);
       }
     },
   });
 
   // 2. Re-apply persisted hidden state after a short delay
-  // (gives MutationObserver time to stamp data-lms-msg-id attributes)
+  // (gives MutationObserver time to stamp data-anyllm-msg-id attributes)
   setTimeout(async () => {
     const count = await DeleteService.applyDeletedState(adapterRef, platform, conversationId);
     if (count > 0) {
@@ -727,12 +727,12 @@ function initHandoffFeature(adapterRef, platform, conversationId) {
   HandoffBanner.init(adapterRef, platform, conversationId);
 
   // Check if we arrived from a handoff
-  chrome.storage.local.get(['lms_pending_handoff'], (res) => {
-    if (res.lms_pending_handoff) {
+  chrome.storage.local.get(['anyllm_pending_handoff'], (res) => {
+    if (res.anyllm_pending_handoff) {
       console.log(`${LOG_PREFIX} Pending handoff detected. Injecting...`);
-      const prompt = res.lms_pending_handoff;
+      const prompt = res.anyllm_pending_handoff;
       // Clear immediately to prevent double injection
-      chrome.storage.local.remove(['lms_pending_handoff']);
+      chrome.storage.local.remove(['anyllm_pending_handoff']);
       
       // We don't have adapter specific injection methods yet, so we write to clipboard 
       // and alert the user, or try to inject if we know the selector.
@@ -756,7 +756,7 @@ function initHandoffFeature(adapterRef, platform, conversationId) {
   });
 
   // Listen for adapter detecting token limit
-  window.addEventListener('lms:tokenLimitWarning', () => {
+  window.addEventListener('anyllm:tokenLimitWarning', () => {
     console.log(`${LOG_PREFIX} Token limit warning emitted. Showing HandoffBanner.`);
     HandoffBanner.showBanner();
   });

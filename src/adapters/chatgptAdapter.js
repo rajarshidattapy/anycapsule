@@ -1,5 +1,5 @@
 // src/adapters/chatgptAdapter.js
-// LM-Source — ChatGPT (chatgpt.com / chat.openai.com) Platform Adapter
+// AnyLLM — ChatGPT (chatgpt.com / chat.openai.com) Platform Adapter
 //
 // Selector strategy (in priority order):
 //   1. data-message-author-role   →  most semantically stable attribute
@@ -76,7 +76,7 @@ export class ChatGPTAdapter extends PlatformAdapter {
   getChatContainer() {
     const container = this._queryFirst(CHAT_CONTAINER_SELECTORS);
     if (!container) {
-      console.warn('[LM-Source][ChatGPTAdapter] Could not locate chat container.');
+      console.warn('[AnyLLM][ChatGPTAdapter] Could not locate chat container.');
     }
     return container;
   }

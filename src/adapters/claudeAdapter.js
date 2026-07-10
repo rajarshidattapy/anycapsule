@@ -1,5 +1,5 @@
 // src/adapters/claudeAdapter.js
-// LM-Source — Claude.ai Platform Adapter
+// AnyLLM — Claude.ai Platform Adapter
 //
 // Selector strategy (in priority order):
 //   1. ARIA roles / semantic HTML  →  most stable across redesigns
@@ -84,7 +84,7 @@ export class ClaudeAdapter extends PlatformAdapter {
   getChatContainer() {
     const container = this._queryFirst(CHAT_CONTAINER_SELECTORS);
     if (!container) {
-      console.warn('[LM-Source][ClaudeAdapter] Could not locate chat container.');
+      console.warn('[AnyLLM][ClaudeAdapter] Could not locate chat container.');
     }
     return container;
   }

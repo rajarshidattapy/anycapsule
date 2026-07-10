@@ -1,5 +1,5 @@
 // src/adapters/geminiAdapter.js
-// LM-Source — Google Gemini (gemini.google.com) Platform Adapter
+// AnyLLM — Google Gemini (gemini.google.com) Platform Adapter
 //
 // Selector strategy (in priority order):
 //   1. Custom HTML elements   →  <conversation-turn>, <user-query>, <model-response>
@@ -134,7 +134,7 @@ export class GeminiAdapter extends PlatformAdapter {
     // 3. Try other selectors
     const container = this._queryFirst(CHAT_CONTAINER_SELECTORS);
     if (!container) {
-      console.warn('[LM-Source][GeminiAdapter] Could not locate chat container.');
+      console.warn('[AnyLLM][GeminiAdapter] Could not locate chat container.');
     }
     return container;
   }
