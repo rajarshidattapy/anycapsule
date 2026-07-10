@@ -3,41 +3,32 @@
 //
 // Replaces the old dropdown popup. Opens as a persistent Chrome side panel
 // (see background.js's chrome.sidePanel.setPanelBehavior call) and renders
-// Pins, Highlights, and extracted Context natively in its own page — instead
-// of the old approach of injecting floating overlay panels into the host page.
+// Pins and extracted Context natively in its own page — instead of the old
+// approach of injecting floating overlay panels into the host page.
 //
-// Pins and Highlights are read directly from chrome.storage.local via the
-// pinService/highlightService modules (pure storage, no DOM dependency).
-// Actions that must touch the host page's DOM (extracting context, removing
-// a highlight span, toggling deleted messages) are relayed to the content
-// script via chrome.tabs.sendMessage.
+// Pins are read directly from chrome.storage.local via the pinService module
+// (pure storage, no DOM dependency). Actions that must touch the host page's
+// DOM (extracting context) are relayed to the content script via
+// chrome.tabs.sendMessage.
 
 'use strict';
 
 import { getPins, unpinMessage } from './services/pinService.js';
-import { getHighlights } from './services/highlightService.js';
 import { getNamespaceKey, DATA_TYPES } from './services/storage.js';
 
 // ── Elements ─────────────────────────────────────────────────────────────────
 
-const platformEl          = document.getElementById('sp-platform');
-const tabs                 = document.querySelectorAll('.sp-tab');
+const platformEl      = document.getElementById('sp-platform');
+const tabs             = document.querySelectorAll('.sp-tab');
 const panes = {
-  pins:       document.getElementById('pane-pins'),
-  highlights: document.getElementById('pane-highlights'),
-  context:    document.getElementById('pane-context'),
-  tools:      document.getElementById('pane-tools'),
+  pins:    document.getElementById('pane-pins'),
+  context: document.getElementById('pane-context'),
 };
 
-const pinsListEl          = document.getElementById('pins-list');
-const pinsEmptyEl         = document.getElementById('pins-empty');
-const highlightsListEl    = document.getElementById('highlights-list');
-const highlightsEmptyEl   = document.getElementById('highlights-empty');
-const btnExtract          = document.getElementById('btn-extract');
-const contextResultEl     = document.getElementById('context-result');
-const btnToggleDeleted    = document.getElementById('btn-toggle-deleted');
-const btnToggleDeletedLbl = document.getElementById('btn-toggle-deleted-label');
-const btnBulkDelete       = document.getElementById('btn-bulk-delete');
+const pinsListEl      = document.getElementById('pins-list');
+const pinsEmptyEl     = document.getElementById('pins-empty');
+const btnExtract      = document.getElementById('btn-extract');
+const contextResultEl = document.getElementById('context-result');
 
 // ── Tab switching ─────────────────────────────────────────────────────────────
 
@@ -56,9 +47,6 @@ let activeTabId = null;
 let currentPlatform = null;
 let currentConversationId = null;
 let pinStorageKey = null;
-let highlightStorageKey = null;
-let _showingDeleted = false;
-let _bulkModeOn = false;
 let _storageListenerAttached = false;
 
 // ── Active tab / platform detection ───────────────────────────────────────────
@@ -116,7 +104,6 @@ async function refreshForActiveTab() {
 
   attachStorageListeners();
   await loadPins();
-  await loadHighlights();
 }
 
 function setUnsupported() {
@@ -126,25 +113,22 @@ function setUnsupported() {
   platformEl.style.color = '#ef4444';
   disableFeatureButtons();
   renderPins([]);
-  renderHighlights([]);
   pinsEmptyEl.textContent = 'Open Claude.ai, ChatGPT, or Gemini to see pins here.';
-  highlightsEmptyEl.textContent = 'Open Claude.ai, ChatGPT, or Gemini to see highlights here.';
 }
 
 function disableFeatureButtons() {
-  [btnExtract, btnToggleDeleted, btnBulkDelete].forEach((b) => { b.disabled = true; });
+  btnExtract.disabled = true;
 }
 function enableFeatureButtons() {
-  [btnExtract, btnToggleDeleted, btnBulkDelete].forEach((b) => { b.disabled = false; });
+  btnExtract.disabled = false;
 }
 
 // ── Live sync with in-page toolbar actions ────────────────────────────────────
-// Pins/highlights can also be created or removed from the message toolbar on
-// the page itself; chrome.storage.onChanged keeps this panel in sync with that.
+// Pins can also be created or removed from the message toolbar on the page
+// itself; chrome.storage.onChanged keeps this panel in sync with that.
 
 function attachStorageListeners() {
   pinStorageKey = getNamespaceKey(currentPlatform, currentConversationId, DATA_TYPES.PIN);
-  highlightStorageKey = getNamespaceKey(currentPlatform, currentConversationId, DATA_TYPES.HIGHLIGHT);
 
   if (_storageListenerAttached) return;
   _storageListenerAttached = true;
@@ -153,9 +137,6 @@ function attachStorageListeners() {
     if (area !== 'local') return;
     if (pinStorageKey && changes[pinStorageKey]) {
       renderPins(changes[pinStorageKey].newValue || []);
-    }
-    if (highlightStorageKey && changes[highlightStorageKey]) {
-      renderHighlights(changes[highlightStorageKey].newValue || []);
     }
   });
 }
@@ -203,52 +184,6 @@ function renderPins(pins) {
     li.appendChild(textEl);
     li.appendChild(actions);
     pinsListEl.appendChild(li);
-  }
-}
-
-// ── Highlights ─────────────────────────────────────────────────────────────────
-
-async function loadHighlights() {
-  const highlights = await getHighlights(currentPlatform, currentConversationId);
-  renderHighlights(highlights);
-}
-
-function renderHighlights(highlights) {
-  highlightsListEl.innerHTML = '';
-  highlightsEmptyEl.style.display = highlights.length ? 'none' : 'block';
-
-  for (const hl of highlights) {
-    const li = document.createElement('li');
-    li.className = 'sp-card';
-
-    const head = document.createElement('div');
-    head.className = 'sp-card-head';
-    const swatch = document.createElement('span');
-    swatch.className = `sp-highlight-swatch ${hl.color}`;
-    const label = document.createElement('span');
-    label.textContent = hl.color;
-    head.appendChild(swatch);
-    head.appendChild(label);
-
-    const textEl = document.createElement('div');
-    textEl.className = 'sp-card-text';
-    textEl.textContent = hl.text;
-
-    const actions = document.createElement('div');
-    actions.className = 'sp-card-actions';
-    const removeBtn = document.createElement('button');
-    removeBtn.className = 'sp-card-action-btn';
-    removeBtn.textContent = 'Remove';
-    removeBtn.addEventListener('click', () => {
-      if (!activeTabId) return;
-      chrome.tabs.sendMessage(activeTabId, { type: 'ANYLLM_REMOVE_HIGHLIGHT', record: hl });
-    });
-    actions.appendChild(removeBtn);
-
-    li.appendChild(head);
-    li.appendChild(textEl);
-    li.appendChild(actions);
-    highlightsListEl.appendChild(li);
   }
 }
 
@@ -386,28 +321,6 @@ function renderContext(ctx) {
 
   contextResultEl.appendChild(handoffWrap);
 }
-
-// ── Tools: show/hide deleted, bulk delete ─────────────────────────────────────
-
-btnToggleDeleted.addEventListener('click', () => {
-  if (!activeTabId) return;
-  chrome.tabs.sendMessage(activeTabId, { type: 'ANYLLM_TOGGLE_DELETED' }, (response) => {
-    if (chrome.runtime.lastError || !response?.success) return;
-    _showingDeleted = response.visible;
-    btnToggleDeletedLbl.textContent = _showingDeleted ? '🙈 Hide Deleted' : '👁 Show Deleted';
-    btnToggleDeleted.classList.toggle('active-state', _showingDeleted);
-  });
-});
-
-btnBulkDelete.addEventListener('click', () => {
-  if (!activeTabId) return;
-  chrome.tabs.sendMessage(activeTabId, { type: 'ANYLLM_BULK_DELETE_MODE' }, (response) => {
-    if (chrome.runtime.lastError || !response?.success) return;
-    _bulkModeOn = response.mode === 'on';
-    btnBulkDelete.textContent = _bulkModeOn ? '✕ Exit Bulk Mode' : '🗑 Bulk Delete';
-    btnBulkDelete.classList.toggle('active-state', _bulkModeOn);
-  });
-});
 
 // ── Tab lifecycle: refresh when the active tab changes or navigates ───────────
 

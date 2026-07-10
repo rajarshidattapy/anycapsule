@@ -159,8 +159,7 @@ body {
 }
 
 /* Pin list */
-.sp-pin-list,
-.sp-highlight-list {
+.sp-pin-list {
   list-style: none;
   display: flex;
   flex-direction: column;
@@ -229,18 +228,6 @@ body {
   background: rgba(255, 255, 255, 0.09);
   color: #e2e8f0;
 }
-
-.sp-highlight-swatch {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  margin-right: 6px;
-}
-
-.sp-highlight-swatch.yellow { background: #facc15; }
-.sp-highlight-swatch.green  { background: #4ade80; }
-.sp-highlight-swatch.red    { background: #f87171; }
 
 /* Context tab */
 #context-result {

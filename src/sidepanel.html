@@ -18,9 +18,7 @@
 
     <nav class="sp-tabs" id="sp-tabs">
       <button class="sp-tab active" data-tab="pins" id="tab-pins">📌 Pins</button>
-      <button class="sp-tab" data-tab="highlights" id="tab-highlights">🖍 Highlights</button>
       <button class="sp-tab" data-tab="context" id="tab-context">✦ Context</button>
-      <button class="sp-tab" data-tab="tools" id="tab-tools">⚙ Tools</button>
     </nav>
 
     <main class="sp-body">
@@ -30,24 +28,10 @@
         <ul class="sp-pin-list" id="pins-list"></ul>
       </section>
 
-      <!-- HIGHLIGHTS -->
-      <section class="sp-pane" id="pane-highlights">
-        <p class="sp-empty" id="highlights-empty">No highlights yet. Select text on the page to highlight it.</p>
-        <ul class="sp-highlight-list" id="highlights-list"></ul>
-      </section>
-
       <!-- CONTEXT -->
       <section class="sp-pane" id="pane-context">
         <button id="btn-extract" class="sp-btn primary">✦ Extract Context</button>
         <div id="context-result"></div>
-      </section>
-
-      <!-- TOOLS -->
-      <section class="sp-pane" id="pane-tools">
-        <button id="btn-toggle-deleted" class="sp-btn">
-          <span id="btn-toggle-deleted-label">👁 Show Deleted</span>
-        </button>
-        <button id="btn-bulk-delete" class="sp-btn">🗑 Bulk Delete</button>
       </section>
     </main>
 
