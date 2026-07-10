@@ -548,32 +548,37 @@ async function initPinFeature(adapterRef, platform, conversationId) {
 
   // 2. Register pin action (idempotent — registerAction overwrites by ID)
   MessageToolbar.registerAction('pin', {
-    icon: '📌',
-    tooltip: 'Pin message',
+    icon: '📦',
+    tooltip: 'Add to Pack',
     showFor: ['all'],
     onClick: async ({ messageId, role, element, button }) => {
-      // Toggle: check if already pinned
-      const existing = await PinService.isPinned(messageId, platform, conversationId);
+      try {
+        // Toggle: check if already packed
+        const existing = await PinService.isPinned(messageId, platform, conversationId);
 
-      if (existing) {
-        // Unpin
-        await PinService.unpinMessage(existing.id, platform, conversationId);
-        MessageToolbar.setMessagePinnedState(messageId, false);
-        button.classList.remove('anyllm-tb-pinned');
-        button.setAttribute('data-tooltip', 'Pin message');
-        console.log(`${LOG_PREFIX} Unpinned message ${messageId}`);
-      } else {
-        // Pin — get text from adapter
-        const msgData = adapter ? adapter.extractMessageData(element) : null;
-        const text = msgData?.text || element?.innerText || '';
+        if (existing) {
+          // Remove from Pack
+          await PinService.unpinMessage(existing.id, platform, conversationId);
+          MessageToolbar.setMessagePinnedState(messageId, false);
+          button.classList.remove('anyllm-tb-pinned');
+          button.setAttribute('data-tooltip', 'Add to Pack');
+          console.log(`${LOG_PREFIX} Removed from Pack: ${messageId}`);
+        } else {
+          // Add to Pack — get text from adapter
+          const msgData = adapter ? adapter.extractMessageData(element) : null;
+          const text = msgData?.text || element?.innerText || '';
 
-        await PinService.pinMessage({
-          messageId, platform, conversationId, role, text,
-        });
-        MessageToolbar.setMessagePinnedState(messageId, true);
-        button.classList.add('anyllm-tb-pinned');
-        button.setAttribute('data-tooltip', 'Unpin message');
-        console.log(`${LOG_PREFIX} Pinned message ${messageId}`);
+          await PinService.pinMessage({
+            messageId, platform, conversationId, role, text,
+          });
+          MessageToolbar.setMessagePinnedState(messageId, true);
+          button.classList.add('anyllm-tb-pinned');
+          button.setAttribute('data-tooltip', 'Remove from Pack');
+          console.log(`${LOG_PREFIX} Added to Pack: ${messageId}`);
+        }
+      } catch (err) {
+        console.error(`${LOG_PREFIX} Pack action failed for ${messageId}:`, err);
+        button.setAttribute('data-tooltip', 'Failed — reload the page and try again');
       }
     },
   });

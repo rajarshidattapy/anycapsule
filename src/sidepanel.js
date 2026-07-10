@@ -113,7 +113,7 @@ function setUnsupported() {
   platformEl.style.color = '#ef4444';
   disableFeatureButtons();
   renderPins([]);
-  pinsEmptyEl.textContent = 'Open Claude.ai, ChatGPT, or Gemini to see pins here.';
+  pinsEmptyEl.textContent = 'Open Claude.ai, ChatGPT, or Gemini to see your Pack here.';
 }
 
 function disableFeatureButtons() {
@@ -171,7 +171,7 @@ function renderPins(pins) {
     actions.className = 'sp-card-actions';
     const unpinBtn = document.createElement('button');
     unpinBtn.className = 'sp-card-action-btn';
-    unpinBtn.textContent = 'Unpin';
+    unpinBtn.textContent = 'Remove from Pack';
     unpinBtn.addEventListener('click', async () => {
       await unpinMessage(pin.id, currentPlatform, currentConversationId);
       if (activeTabId) {
@@ -196,7 +196,7 @@ btnExtract.addEventListener('click', () => {
 
   chrome.tabs.sendMessage(activeTabId, { type: 'ANYLLM_EXTRACT_CONTEXT' }, (response) => {
     btnExtract.disabled = false;
-    btnExtract.textContent = '✦ Extract Context';
+    btnExtract.textContent = '✦ Extract';
 
     contextResultEl.innerHTML = '';
     if (chrome.runtime.lastError || !response?.success) {
