@@ -61,7 +61,7 @@
             </div>
             <div class="terminal-body">
               <p class="muted"># in the browser — Claude.ai, ChatGPT, Gemini</p>
-              <p><span>›</span> Extract Context → Pinboard → Handoff</p>
+              <p><span>›</span> Pack → Prime → Push</p>
               <p>&nbsp;</p>
               <p class="muted"># in the terminal — Claude Code, Codex, Agy</p>
               <p><span>$</span> pip install anyllm-ctx</p>
@@ -119,11 +119,11 @@
           <article class="card" style="min-height: 320px;">
             <span class="card-index">EXT</span>
             <h3>AnyLLM for Chat</h3>
-            <p>A browser extension that lives inside the conversation itself. Extract, pin, highlight, and hand off — without leaving Claude.ai, ChatGPT, or Gemini.</p>
+            <p>A browser extension that docks beside the conversation itself. Pack, prime, and push — without leaving Claude.ai, ChatGPT, or Gemini.</p>
             <ul class="plain-list" style="margin-top: 18px;">
-              <li><strong>Extract Context</strong> — decisions, next steps, code, topics.</li>
-              <li><strong>Pinboard &amp; Highlights</strong> — keep the important parts in view.</li>
-              <li><strong>Context Handoff</strong> — send a briefing to another platform's tab.</li>
+              <li><strong>Pack</strong> — keep single messages, or the whole chat at once.</li>
+              <li><strong>Prime</strong> — decisions, next steps, and code, distilled into a briefing.</li>
+              <li><strong>Push</strong> — send that briefing straight into another platform's tab.</li>
             </ul>
             <p class="muted" style="margin-top: 20px; font-size: 0.85rem;">Works with: Claude.ai · ChatGPT · Gemini</p>
             <div class="hero-actions" style="margin-top: 20px;">
@@ -154,70 +154,85 @@
         <div class="section-intro">
           <p class="section-label">AnyLLM for Chat</p>
           <h2>The browser extension.</h2>
-          <p>Works inside the tab you're already in. Detects the platform, lights up its buttons, and keeps everything — pins, highlights, deletions — local to your machine.</p>
+          <p>Works inside the tab you're already in. Click the toolbar icon and a side panel docks beside the conversation — nothing is injected on top of the page, and everything stays local to your machine.</p>
         </div>
+
+        <figure class="shot">
+          <img src="./ent.png" alt="AnyLLM side panel docked next to a ChatGPT conversation, showing the Pack, Prime, and History tabs">
+          <figcaption>The AnyLLM side panel on ChatGPT — Pack, Prime, History.</figcaption>
+        </figure>
 
         <div class="steps">
           <article class="step">
             <span>1</span>
-            <h3>Open</h3>
-            <code>auto-detect</code>
-            <p>Visit Claude.ai, ChatGPT, or Gemini. AnyLLM detects the platform and enables its feature buttons.</p>
+            <h3>Pack</h3>
+            <code>📦 Pack</code>
+            <p>Hover any message and click 📦, or pack the entire chat in one click. Everything you keep lands in the Pack tab.</p>
           </article>
           <article class="step">
             <span>2</span>
-            <h3>Extract</h3>
-            <code>Extract Context</code>
-            <p>Scans the thread for decisions, next steps, code blocks, and topics — condensed into one structured summary.</p>
+            <h3>Prime</h3>
+            <code>🫸 Prime</code>
+            <p>Extract decisions, next steps, and code from the thread into one structured briefing, ready to paste.</p>
           </article>
           <article class="step">
             <span>3</span>
-            <h3>Hand off</h3>
-            <code>Context Handoff</code>
-            <p>Copy to clipboard, save to the pinboard, or send it straight into a new tab on another platform.</p>
+            <h3>Push</h3>
+            <code>Claude · ChatGPT · Gemini</code>
+            <p>Copy the briefing, or send it straight into a fresh tab on another platform — it's typed in for you.</p>
           </article>
         </div>
 
         <div class="card-grid three" style="margin-top: 16px;">
           <article class="card">
             <span class="card-index">01</span>
-            <h3>Extract Context</h3>
-            <p>Scans every message for decisions, next steps, code blocks, and topics, then condenses the recent exchange into a structured summary.</p>
+            <h3>Pack a message</h3>
+            <p>Hover any turn and hit 📦 to keep it. Packed messages persist per conversation, not per tab, and survive reloads.</p>
           </article>
           <article class="card">
             <span class="card-index">02</span>
-            <h3>Context Handoff</h3>
-            <p>Packages the extraction into a ready-to-paste briefing. Copy to clipboard, save it to the pinboard, or open a new tab and inject it directly.</p>
+            <h3>Pack the whole chat</h3>
+            <p>One button captures the entire conversation as a single role-labelled transcript — no clicking message by message.</p>
           </article>
           <article class="card">
             <span class="card-index">03</span>
-            <h3>Pinboard</h3>
-            <p>Pin any message from the conversation, reorder by drag-and-drop, and revisit it later — persisted per conversation, not just per tab.</p>
+            <h3>Prime</h3>
+            <p>Scans every message for decisions, next steps, and code blocks, then condenses the recent exchange into a structured handoff briefing.</p>
           </article>
           <article class="card">
             <span class="card-index">04</span>
-            <h3>Highlights</h3>
-            <p>Select text and mark it yellow, green, or red. Highlights are anchored to the DOM and survive page reloads.</p>
+            <h3>Push anywhere</h3>
+            <p>Copy the briefing to your clipboard, or open Claude, ChatGPT, or Gemini in a new tab with the prompt already injected.</p>
           </article>
           <article class="card">
             <span class="card-index">05</span>
-            <h3>Soft Delete &amp; Bulk Mode</h3>
-            <p>Hide clutter from view with a local-only soft delete. Toggle visibility any time, or switch to bulk mode and clear several messages at once.</p>
+            <h3>History</h3>
+            <p>Every extraction is kept — the last 20 per conversation — timestamped and re-copyable, so an earlier briefing is never lost.</p>
           </article>
           <article class="card">
             <span class="card-index">06</span>
             <h3>Local-First Storage</h3>
-            <p>Everything — pins, highlights, deletions — lives in <code>chrome.storage</code> on your machine. Nothing is sent to a server.</p>
+            <p>Packs, highlights, and history live in <code>chrome.storage</code> on your machine. No server, no account, no telemetry.</p>
           </article>
         </div>
 
-        <div class="integrations-grid" style="grid-template-columns: repeat(3, 1fr); margin-top: 28px;">
+        <div class="integration-note" style="margin-top: 16px;">
+          <strong>Also on every message</strong> — a hover toolbar for the smaller edits:
+          <span class="cmd-pills">
+            <code>📦 Add to Pack</code>
+            <code>✎ Edit locally</code>
+            <code>🗑 Hide locally</code>
+            <code>🖍 Highlight selection</code>
+          </span>
+        </div>
+
+        <div class="integrations-grid" style="grid-template-columns: repeat(3, 1fr); margin-top: 16px;">
           <div class="integration-card highlight">
             <div class="integration-head">
               <span class="int-name">Claude.ai</span>
               <span class="int-badge zero">supported</span>
             </div>
-            <p>Adapter reads Claude's message DOM to extract, pin, and highlight in place.</p>
+            <p>Adapter reads Claude's message DOM to pack, edit, and highlight in place.</p>
           </div>
           <div class="integration-card highlight">
             <div class="integration-head">
@@ -231,7 +246,7 @@
               <span class="int-name">Google Gemini</span>
               <span class="int-badge zero">supported</span>
             </div>
-            <p>Same popup, same feature set — the adapter layer normalises each platform's DOM.</p>
+            <p>Same panel, same feature set — the adapter layer normalises each platform's DOM.</p>
           </div>
         </div>
 
@@ -254,6 +269,12 @@
           <h2>The CLI tool.</h2>
           <p>Install once, and <code>/anyllm-pack</code> works inside every AI coding tool you use — without leaving your session.</p>
         </div>
+
+        <figure class="shot">
+          <img src="./image.png" alt="An AI coding agent's command palette listing the installed /anyllm-init, /anyllm-pack, /anyllm-prime, /anyllm-push, /anyllm-repack, /anyllm-status, /anyllm-log and /anyllm-diff slash commands">
+          <figcaption>After <code>anyllm install</code> — all 8 commands, autocompleting inside your coding agent.</figcaption>
+        </figure>
+
         <div class="steps">
           <article class="step">
             <span>1</span>
@@ -423,7 +444,7 @@
               <tr><td>Claude MEMORY.md</td><td>Claude only</td><td>No</td><td>No</td><td>Manual</td><td>N/A</td></tr>
               <tr><td>Cursor Rules</td><td>Cursor only</td><td>No</td><td>No</td><td>Manual</td><td>N/A</td></tr>
               <tr class="highlight-row"><td>AnyLLM CLI</td><td>End-user devs</td><td>7 tools</td><td>Yes</td><td>Yes</td><td>Yes</td></tr>
-              <tr class="highlight-row"><td>AnyLLM Extension</td><td>End-user devs</td><td>3 platforms</td><td>N/A</td><td>Local pins/highlights</td><td>Yes</td></tr>
+              <tr class="highlight-row"><td>AnyLLM Extension</td><td>End-user devs</td><td>3 platforms</td><td>N/A</td><td>Local pack + history</td><td>Yes</td></tr>
             </tbody>
           </table>
         </div>
@@ -436,7 +457,7 @@
         <div>
           <p class="section-label">The .anyllm Format</p>
           <h2>A format designed to become boring infrastructure.</h2>
-          <p class="lead">Versioned markdown keeps context inspectable, diff-friendly, and easy for other tools to build on. This powers the CLI's rolling memory — the extension keeps its own local pins and highlights in <code>chrome.storage</code>.</p>
+          <p class="lead">Versioned markdown keeps context inspectable, diff-friendly, and easy for other tools to build on. This powers the CLI's rolling memory — the extension keeps its own packs, highlights, and history in <code>chrome.storage</code>.</p>
           <ul class="plain-list">
             <li><strong>Versioned</strong> so the format can evolve without breaking old snapshots.</li>
             <li><strong>Merged</strong> so decisions accumulate across sessions — never silently dropped.</li>
