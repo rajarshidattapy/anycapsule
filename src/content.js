@@ -9,26 +9,25 @@
 //  4. Run a debounced MutationObserver on the chat container to detect new messages.
 //  5. Expose a lightweight internal event bus so feature modules (P2.2–P2.7)
 //     can subscribe to 'anyllm:messageAdded' and 'anyllm:tokenLimitWarning' events.
-//  6. (P2.2) Listen for ANYLLM_EXTRACT_CONTEXT messages and trigger context extraction.
-//  7. (P2.3) Inject per-message toolbar with Pin action; manage Pinboard panel.
-//  8. (P2.4) Soft-delete toolbar action; bulk-delete mode; show/hide toggle.
-//  9. (P2.5) Inline edit toolbar action; restore edited text on page load.
-// 10. (P2.6) Inline text highlight selection; highlight summary panel.
+//  6. Listen for ANYLLM_EXTRACT_CONTEXT messages and return extracted context data.
+//  7. Inject per-message toolbar with Pin action; pins/highlights/context are
+//     rendered in the side panel (sidepanel.js), not injected into this page.
+//  8. Soft-delete toolbar action; bulk-delete mode; show/hide toggle.
+//  9. Inline edit toolbar action; restore edited text on page load.
+// 10. Inline text highlight selection (color picker toolbar only).
 
 'use strict';
 
-import { ClaudeAdapter, ChatGPTAdapter, GeminiAdapter } from './adapters/adapter.js';
+import { ClaudeAdapter, ChatGPTAdapter, GeminiAdapter } from './services/adapter.js';
 import { extractContext }   from './services/contextExtractor.js';
-import { ContextSidePanel } from './components/ContextSidePanel.js';
 import PinService            from './services/pinService.js';
 import { MessageToolbar }   from './components/messageToolbar.js';
-import { PinboardPanel }    from './components/PinboardPanel.js';
 import DeleteService         from './services/deleteService.js';
 import EditService           from './services/editService.js';
 import HighlightService      from './services/highlightService.js';
 import HighlightToolbar      from './components/highlightToolbar.js';
-import HighlightsPanel       from './components/HighlightsPanel.js';
 import HandoffBanner         from './components/HandoffBanner.js';
+import { getNamespaceKey, DATA_TYPES } from './services/storage.js';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -51,7 +50,7 @@ const CONTAINER_POLL_TIMEOUT_MS = 30_000; // Give up after 30 s
 
 const hostname = window.location.hostname;
 
-/** @type {import('./adapters/adapter.js').PlatformAdapter | null} */
+/** @type {import('./services/adapter.js').PlatformAdapter | null} */
 let adapter = null;
 
 if (hostname.includes('claude.ai')) {
@@ -100,7 +99,7 @@ const seenMessageIds = new Set();
 /**
  * Initialise the content script for a detected platform.
  *
- * @param {import('./adapters/adapter.js').PlatformAdapter} adapter
+ * @param {import('./services/adapter.js').PlatformAdapter} adapter
  */
 async function init(adapter) {
   const platform = adapter.getPlatformIdentifier();
@@ -136,37 +135,67 @@ async function init(adapter) {
   watchForNavigation(adapter);
 }
 
-// ── P2.2 — Context Extraction wiring ─────────────────────────────────────────
+// ── Context Extraction wiring ─────────────────────────────────────────────────
+// Extraction still requires the page's live DOM (adapter.getMessageElements()),
+// but rendering happens in the side panel — this just computes and returns data.
 
 /**
- * Run context extraction against the current adapter and render the side panel.
- * Called from the popup via chrome.runtime.sendMessage or on demand.
+ * Strip non-serializable DOM element references before sending a context
+ * object across the runtime messaging boundary (chrome.runtime structured
+ * clone cannot carry live DOM nodes).
  *
- * @param {import('./adapters/adapter.js').PlatformAdapter} adapterRef
+ * @param {object} ctx
+ * @returns {object}
+ */
+function serializeContext(ctx) {
+  return {
+    ...ctx,
+    condensed: (ctx.condensed || []).map(({ element, ...rest }) => rest),
+  };
+}
+
+/**
+ * @param {import('./services/adapter.js').PlatformAdapter} adapterRef
+ * @returns {object | null}
  */
 function runContextExtraction(adapterRef) {
   const ctx = extractContext(adapterRef);
   if (!ctx) {
     console.warn(`${LOG_PREFIX} Context extraction returned nothing.`);
-    return;
+    return null;
   }
-
-  ContextSidePanel.render(ctx, {
-    onRefresh: () => runContextExtraction(adapterRef),
-  });
-  ContextSidePanel.open();
+  return ctx;
 }
 
-// Listen for messages from the popup / background
+// Listen for messages from the side panel / background
 chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
+  // Tell the side panel which platform/conversation this tab is on, so it can
+  // key its pin/highlight storage reads correctly.
+  if (request?.type === 'ANYLLM_GET_CONTEXT_INFO') {
+    if (!adapter) {
+      sendResponse({ success: false, error: 'No adapter active on this page.' });
+      return true;
+    }
+    sendResponse({
+      success: true,
+      platform: adapter.getPlatformIdentifier(),
+      conversationId: adapter.getConversationId(),
+    });
+    return true;
+  }
+
   if (request?.type === 'ANYLLM_EXTRACT_CONTEXT') {
     if (!adapter) {
       sendResponse({ success: false, error: 'No adapter active on this page.' });
       return true;
     }
     try {
-      runContextExtraction(adapter);
-      sendResponse({ success: true });
+      const ctx = runContextExtraction(adapter);
+      if (!ctx) {
+        sendResponse({ success: false, error: 'No messages found on this page.' });
+        return true;
+      }
+      sendResponse({ success: true, context: serializeContext(ctx) });
     } catch (err) {
       console.error(`${LOG_PREFIX} Context extraction error:`, err);
       sendResponse({ success: false, error: err.message });
@@ -174,19 +203,7 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
     return true; // keep channel open for async
   }
 
-  if (request?.type === 'ANYLLM_TOGGLE_PANEL') {
-    ContextSidePanel.toggle();
-    sendResponse({ success: true });
-    return true;
-  }
-
-  if (request?.type === 'ANYLLM_OPEN_PINBOARD') {
-    PinboardPanel.toggle();
-    sendResponse({ success: true });
-    return true;
-  }
-
-  // P2.4 — Toggle show/hide deleted messages
+  // Toggle show/hide deleted messages
   if (request?.type === 'ANYLLM_TOGGLE_DELETED') {
     const nowVisible = !DeleteService.getDeletedVisible();
     DeleteService.setDeletedVisible(nowVisible);
@@ -194,7 +211,7 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
     return true;
   }
 
-  // P2.4 — Enter/exit bulk-delete mode
+  // Enter/exit bulk-delete mode
   if (request?.type === 'ANYLLM_BULK_DELETE_MODE') {
     if (!adapter) { sendResponse({ success: false }); return true; }
     if (DeleteService.isBulkMode()) {
@@ -212,7 +229,7 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
     return true;
   }
 
-  // P2.5 — Revert an edited message from the popup (emergency fallback)
+  // Revert an edited message from the side panel (emergency fallback)
   if (request?.type === 'ANYLLM_REVERT_EDIT') {
     if (!adapter) { sendResponse({ success: false }); return true; }
     const { messageId } = request;
@@ -228,9 +245,23 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
     return true; // Keep channel open for async response
   }
 
-  // P2.6 — Open Highlights Panel
-  if (request?.type === 'ANYLLM_OPEN_HIGHLIGHTS') {
-    HighlightsPanel.toggle();
+  // Remove a highlight requested from the side panel (touches the live DOM span)
+  if (request?.type === 'ANYLLM_REMOVE_HIGHLIGHT') {
+    HighlightService.removeHighlight(request.record)
+      .then(() => sendResponse({ success: true }))
+      .catch((e) => {
+        console.error(`${LOG_PREFIX} Failed to remove highlight:`, e);
+        sendResponse({ success: false });
+      });
+    return true;
+  }
+
+  // Side panel unpinned a message — re-sync the in-page toolbar ring state
+  if (request?.type === 'ANYLLM_SYNC_PINS') {
+    if (!adapter) { sendResponse({ success: false }); return true; }
+    const platform       = adapter.getPlatformIdentifier();
+    const conversationId = adapter.getConversationId();
+    syncPinnedRings(platform, conversationId);
     sendResponse({ success: true });
     return true;
   }
@@ -238,34 +269,22 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   return false;
 });
 
-// Auto-render the side panel (without opening it) once the adapter is ready,
-// so the floating toggle button appears as soon as the page loads.
 document.addEventListener('anyllm:adapterReady', (e) => {
   const { adapter: readyAdapter, platform, conversationId } = e.detail;
 
-  // P2.2 — Context side panel auto-render
-  setTimeout(() => {
-    const ctx = extractContext(readyAdapter);
-    if (ctx) {
-      ContextSidePanel.render(ctx, {
-        onRefresh: () => runContextExtraction(readyAdapter),
-      });
-    }
-  }, 1500);
-
-  // P2.3 — Init message toolbar + pinboard
+  // Init message toolbar + pin storage wiring
   initPinFeature(readyAdapter, platform, conversationId);
 
-  // P2.4 — Init delete feature (register action + restore persisted state)
+  // Init delete feature (register action + restore persisted state)
   initDeleteFeature(readyAdapter, platform, conversationId);
 
-  // P2.5 — Init edit feature (register action + restore persisted edits)
+  // Init edit feature (register action + restore persisted edits)
   initEditFeature(readyAdapter, platform, conversationId);
 
-  // P2.6 — Init highlight feature
+  // Init highlight feature (selection toolbar + persisted DOM restore)
   initHighlightFeature(readyAdapter, platform, conversationId);
 
-  // P2.7 — Init handoff banner & handle pending injections
+  // Init handoff banner & handle pending injections
   initHandoffFeature(readyAdapter, platform, conversationId);
 });
 
@@ -291,7 +310,7 @@ document.addEventListener('anyllm:messageAdded', (e) => {
  * Poll until the chat container appears or the timeout expires.
  * Returns null on timeout.
  *
- * @param {import('./adapters/adapter.js').PlatformAdapter} adapter
+ * @param {import('./services/adapter.js').PlatformAdapter} adapter
  * @returns {Promise<Element | null>}
  */
 function waitForChatContainer(adapter) {
@@ -321,7 +340,7 @@ function waitForChatContainer(adapter) {
  * Scan all current message elements and emit 'anyllm:messageAdded' for any
  * not yet seen.
  *
- * @param {import('./adapters/adapter.js').PlatformAdapter} adapter
+ * @param {import('./services/adapter.js').PlatformAdapter} adapter
  */
 function processCurrentMessages(adapter) {
   const elements = adapter.getMessageElements();
@@ -345,7 +364,7 @@ function processCurrentMessages(adapter) {
 /**
  * Process a single newly-detected message element.
  *
- * @param {import('./adapters/adapter.js').PlatformAdapter} adapter
+ * @param {import('./services/adapter.js').PlatformAdapter} adapter
  * @param {Element} el
  * @param {number} index
  */
@@ -367,7 +386,7 @@ function processNewMessage(adapter, el, index) {
 
 /**
  * Check for a token limit warning and emit the event once if found.
- * @param {import('./adapters/adapter.js').PlatformAdapter} adapter
+ * @param {import('./services/adapter.js').PlatformAdapter} adapter
  */
 let _tokenLimitWarned = false;
 function checkTokenLimit(adapter) {
@@ -396,7 +415,7 @@ let debounceTimer = null;
  * Uses a debounce so streaming updates (dozens of mutations per second)
  * are collapsed into a single processing pass.
  *
- * @param {import('./adapters/adapter.js').PlatformAdapter} adapter
+ * @param {import('./services/adapter.js').PlatformAdapter} adapter
  * @param {Element} container
  */
 function startMutationObserver(adapter, container) {
@@ -430,7 +449,7 @@ function startMutationObserver(adapter, container) {
  * Watch for URL changes via history.pushState / popstate.
  * When a navigation is detected, reset state and re-initialise.
  *
- * @param {import('./adapters/adapter.js').PlatformAdapter} adapter
+ * @param {import('./services/adapter.js').PlatformAdapter} adapter
  */
 function watchForNavigation(adapter) {
   let lastPath = window.location.pathname;
@@ -452,7 +471,7 @@ function watchForNavigation(adapter) {
 
 /**
  * Handle a detected SPA navigation.
- * @param {import('./adapters/adapter.js').PlatformAdapter} adapter
+ * @param {import('./services/adapter.js').PlatformAdapter} adapter
  * @param {string} previousPath
  */
 function onNavigate(adapter, previousPath) {
@@ -473,7 +492,13 @@ function onNavigate(adapter, previousPath) {
   setTimeout(() => init(adapter), 500); // Brief delay for the SPA to mount the new view
 }
 
-// ── P2.3 — Pin feature initialisation ────────────────────────────────────────
+// ── Pin feature initialisation ───────────────────────────────────────────────
+// Pin data lives entirely in chrome.storage (see pinService.js). Listing,
+// unpinning, and reordering pins is done in the side panel (sidepanel.js),
+// which talks to storage directly. This module only needs to:
+//   1. Register the toolbar's pin/unpin action (writes to storage + updates
+//      the ring around the message element).
+//   2. Keep those rings in sync if a pin is added/removed from the side panel.
 
 /**
  * Build a Map<messageId, true> of currently-pinned messages for this conversation.
@@ -489,13 +514,31 @@ async function buildPinnedSet(platform, conversationId) {
 }
 
 /**
+ * Re-apply the pinned-state ring to every currently-rendered message element,
+ * based on the latest pins in storage. Used both after a page load and after
+ * the side panel unpins a message (which this content script wasn't involved in).
+ *
+ * @param {string} platform
+ * @param {string} conversationId
+ */
+async function syncPinnedRings(platform, conversationId) {
+  const pinnedIds = await buildPinnedSet(platform, conversationId);
+  document.querySelectorAll('[data-anyllm-msg-id]').forEach((el) => {
+    const id = el.getAttribute('data-anyllm-msg-id');
+    MessageToolbar.setMessagePinnedState(id, pinnedIds.has(id));
+  });
+}
+
+/**
  * Initialise the pin feature for the current conversation:
  *   1. Init toolbar DOM + register pin action
  *   2. Load existing pins from storage
- *   3. Render pinboard panel
- *   4. Restore pinned-state outline rings on all existing message elements
+ *   3. Restore pinned-state outline rings on all existing message elements
+ *   4. Attach toolbar to all existing message elements
+ *   5. Listen for storage changes so a pin/unpin from the side panel updates
+ *      these rings without a page reload.
  *
- * @param {import('./adapters/adapter.js').PlatformAdapter} adapterRef
+ * @param {import('./services/adapter.js').PlatformAdapter} adapterRef
  * @param {string} platform
  * @param {string} conversationId
  */
@@ -505,75 +548,48 @@ async function initPinFeature(adapterRef, platform, conversationId) {
 
   // 2. Register pin action (idempotent — registerAction overwrites by ID)
   MessageToolbar.registerAction('pin', {
-    icon: '📌',
-    tooltip: 'Pin message',
+    icon: '📦',
+    tooltip: 'Add to Pack',
     showFor: ['all'],
     onClick: async ({ messageId, role, element, button }) => {
-      // Toggle: check if already pinned
-      const existing = await PinService.isPinned(messageId, platform, conversationId);
+      try {
+        // Toggle: check if already packed
+        const existing = await PinService.isPinned(messageId, platform, conversationId);
 
-      if (existing) {
-        // Unpin
-        await PinService.unpinMessage(existing.id, platform, conversationId);
-        MessageToolbar.setMessagePinnedState(messageId, false);
-        button.classList.remove('anyllm-tb-pinned');
-        button.setAttribute('data-tooltip', 'Pin message');
-        PinboardPanel.removePin(existing.id);
-        console.log(`${LOG_PREFIX} Unpinned message ${messageId}`);
-      } else {
-        // Pin — get text from adapter
-        const msgData = adapter ? adapter.extractMessageData(element) : null;
-        const text = msgData?.text || element?.innerText || '';
+        if (existing) {
+          // Remove from Pack
+          await PinService.unpinMessage(existing.id, platform, conversationId);
+          MessageToolbar.setMessagePinnedState(messageId, false);
+          button.classList.remove('anyllm-tb-pinned');
+          button.setAttribute('data-tooltip', 'Add to Pack');
+          console.log(`${LOG_PREFIX} Removed from Pack: ${messageId}`);
+        } else {
+          // Add to Pack — get text from adapter
+          const msgData = adapter ? adapter.extractMessageData(element) : null;
+          const text = msgData?.text || element?.innerText || '';
 
-        const pin = await PinService.pinMessage({
-          messageId, platform, conversationId, role, text,
-        });
-        MessageToolbar.setMessagePinnedState(messageId, true);
-        button.classList.add('anyllm-tb-pinned');
-        button.setAttribute('data-tooltip', 'Unpin message');
-        PinboardPanel.addPin(pin);
-        console.log(`${LOG_PREFIX} Pinned message ${messageId}`);
-      }
-    },
-  });
-
-  // 3. Load pins from storage
-  const pins = await PinService.getPins(platform, conversationId);
-
-  // 4. Render pinboard (closed by default)
-  PinboardPanel.render(pins, {
-    platform,
-    conversationId,
-    onUnpin: async (pinId, clearAll) => {
-      if (clearAll) {
-        // Remove all pins for this conversation
-        const all = await PinService.getPins(platform, conversationId);
-        for (const p of all) {
-          await PinService.unpinMessage(p.id, platform, conversationId);
-          MessageToolbar.setMessagePinnedState(p.messageId, false);
+          await PinService.pinMessage({
+            messageId, platform, conversationId, role, text,
+          });
+          MessageToolbar.setMessagePinnedState(messageId, true);
+          button.classList.add('anyllm-tb-pinned');
+          button.setAttribute('data-tooltip', 'Remove from Pack');
+          console.log(`${LOG_PREFIX} Added to Pack: ${messageId}`);
         }
-        PinboardPanel.render([], { platform, conversationId,
-          onUnpin: arguments.callee,
-          onReorder: async (ids) => { await PinService.reorderPins(platform, conversationId, ids); },
-        });
-        return;
+      } catch (err) {
+        console.error(`${LOG_PREFIX} Pack action failed for ${messageId}:`, err);
+        button.setAttribute('data-tooltip', 'Failed — reload the page and try again');
       }
-      const pin = pins.find(p => p.id === pinId);
-      await PinService.unpinMessage(pinId, platform, conversationId);
-      if (pin) MessageToolbar.setMessagePinnedState(pin.messageId, false);
-      PinboardPanel.removePin(pinId);
-    },
-    onReorder: async (orderedIds) => {
-      await PinService.reorderPins(platform, conversationId, orderedIds);
     },
   });
 
-  // 5. Restore pinned-state rings on already-rendered message elements
+  // 3. Restore pinned-state rings on already-rendered message elements
+  const pins = await PinService.getPins(platform, conversationId);
   for (const pin of pins) {
     MessageToolbar.setMessagePinnedState(pin.messageId, true);
   }
 
-  // 6. Attach toolbar to all existing message elements
+  // 4. Attach toolbar to all existing message elements
   const elements = adapterRef.getMessageElements();
   elements.forEach((el, idx) => {
     const data = adapterRef.extractMessageData(el, idx);
@@ -582,6 +598,14 @@ async function initPinFeature(adapterRef, platform, conversationId) {
         el, data.messageId, data.role,
         () => buildPinnedSet(platform, conversationId),
       );
+    }
+  });
+
+  // 5. Live-sync rings if pins change from the side panel
+  const pinStorageKey = getNamespaceKey(platform, conversationId, DATA_TYPES.PIN);
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local' && changes[pinStorageKey]) {
+      syncPinnedRings(platform, conversationId);
     }
   });
 
@@ -597,7 +621,7 @@ async function initPinFeature(adapterRef, platform, conversationId) {
  *
  * Called from the anyllm:adapterReady handler after initPinFeature.
  *
- * @param {import('./adapters/adapter.js').PlatformAdapter} adapterRef
+ * @param {import('./services/adapter.js').PlatformAdapter} adapterRef
  * @param {string} platform
  * @param {string} conversationId
  */
@@ -645,7 +669,7 @@ async function initDeleteFeature(adapterRef, platform, conversationId) {
  *   2. Re-apply persisted local edits to DOM (after a 2.5s delay to let
  *      the MutationObserver stamp message IDs first)
  *
- * @param {import('./adapters/adapter.js').PlatformAdapter} adapterRef
+ * @param {import('./services/adapter.js').PlatformAdapter} adapterRef
  * @param {string} platform
  * @param {string} conversationId
  */
@@ -677,31 +701,9 @@ async function initEditFeature(adapterRef, platform, conversationId) {
 // ── P2.6 — Highlight feature initialisation ────────────────────────────────────
 
 async function initHighlightFeature(adapterRef, platform, conversationId) {
+  // Selection-triggered color-picker toolbar (still lives on the page —
+  // the list of saved highlights itself is rendered in the side panel).
   HighlightToolbar.init(adapterRef, platform, conversationId);
-
-  // Render HighlightsPanel initially closed
-  const highlights = await HighlightService.getHighlights(platform, conversationId);
-  HighlightsPanel.render(highlights, {
-    onRemove: async (id) => {
-      const hls = await HighlightService.getHighlights(platform, conversationId);
-      const hl = hls.find(h => h.id === id);
-      if (hl) {
-        await HighlightService.removeHighlight(hl);
-        HighlightsPanel.render(await HighlightService.getHighlights(platform, conversationId), _optionsCache);
-      }
-    }
-  });
-  // Local hack: keep the options reference to avoid circular binding
-  const _optionsCache = {
-    onRemove: async (id) => {
-      const hls = await HighlightService.getHighlights(platform, conversationId);
-      const hl = hls.find(h => h.id === id);
-      if (hl) {
-        await HighlightService.removeHighlight(hl);
-        HighlightsPanel.render(await HighlightService.getHighlights(platform, conversationId), _optionsCache);
-      }
-    }
-  };
 
   // Re-apply persisted highlights after a short delay
   setTimeout(async () => {
@@ -711,12 +713,7 @@ async function initHighlightFeature(adapterRef, platform, conversationId) {
     }
   }, 3000);
 
-  // Listen for changes and re-render the panel
-  HighlightService.onHighlightChanged(async () => {
-    HighlightsPanel.render(await HighlightService.getHighlights(platform, conversationId), _optionsCache);
-  });
-
-  console.log(`${LOG_PREFIX} Highlight feature (P2.6) initialised.`);
+  console.log(`${LOG_PREFIX} Highlight feature initialised.`);
 }
 
 // ── P2.7 — Handoff Banner & Injection ─────────────────────────────────────────

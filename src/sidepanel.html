@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AnyLLM</title>
+  <link rel="stylesheet" href="./sidepanel.css">
+</head>
+<body>
+  <div class="sp-container">
+    <header class="sp-header">
+      <img src="assets/logo.png" alt="AnyLLM" class="sp-logo">
+      <div class="sp-header-text">
+        <h1>AnyLLM</h1>
+        <p class="sp-platform" id="sp-platform">Detecting platform…</p>
+      </div>
+    </header>
+
+    <nav class="sp-tabs" id="sp-tabs">
+      <button class="sp-tab active" data-tab="pins" id="tab-pins">📦 Pack</button>
+      <button class="sp-tab" data-tab="context" id="tab-context">🫸 Push</button>
+    </nav>
+
+    <main class="sp-body">
+      <!-- PINS -->
+      <section class="sp-pane active" id="pane-pins">
+        <p class="sp-empty" id="pins-empty">Nothing packed yet. Hover a message on the page and click 📦.</p>
+        <ul class="sp-pin-list" id="pins-list"></ul>
+      </section>
+
+      <!-- CONTEXT -->
+      <section class="sp-pane" id="pane-context">
+        <button id="btn-extract" class="sp-btn primary">✦ Extract</button>
+        <div id="context-result"></div>
+      </section>
+    </main>
+
+    <footer class="sp-footer">
+      <span class="sp-version">v1.1.0</span>
+    </footer>
+  </div>
+
+  <script type="module" src="./sidepanel.js"></script>
+</body>
+</html>

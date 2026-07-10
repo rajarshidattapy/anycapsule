@@ -380,7 +380,7 @@ async function restoreAll(platform, conversationId) {
  * Must be called AFTER the adapter has populated the DOM with message elements
  * (i.e. after the MutationObserver has fired the initial processCurrentMessages).
  *
- * @param {import('../adapters/adapter.js').PlatformAdapter} adapterRef
+ * @param {import('./adapter.js').PlatformAdapter} adapterRef
  * @param {string} platform
  * @param {string} conversationId
  * @returns {Promise<number>} count of elements re-hidden

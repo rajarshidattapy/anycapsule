@@ -3,12 +3,22 @@
 //
 // Handles:
 //   - Extension install / update lifecycle
-//   - Message routing between content scripts and popup
-//   - ANYLLM_OPEN_URL: opens a new tab (used by ContextSidePanel handoff buttons)
+//   - Opening the side panel when the toolbar icon is clicked
+//   - Message routing between content scripts and the side panel
+//   - ANYLLM_OPEN_URL: opens a new tab (used by the side panel's handoff buttons)
 
 'use strict';
 
 console.log('[AnyLLM] Background service worker started.');
+
+// ── Side panel ─────────────────────────────────────────────────────────────────
+// Clicking the toolbar icon opens the side panel (instead of a popup dropdown).
+
+if (chrome.sidePanel) {
+  chrome.sidePanel
+    .setPanelBehavior({ openPanelOnActionClick: true })
+    .catch((error) => console.error('[AnyLLM] Failed to set side panel behavior:', error));
+}
 
 // ── Extension lifecycle ───────────────────────────────────────────────────────
 
@@ -26,9 +36,10 @@ chrome.runtime.onInstalled.addListener((details) => {
 // ── Message routing ───────────────────────────────────────────────────────────
 //
 // Known message types (grow with each phase):
-//   ANYLLM_EXTRACT_CONTEXT  — popup → content script (forwarded directly via tabs.sendMessage)
-//   ANYLLM_TOGGLE_PANEL     — popup → content script
-//   ANYLLM_OPEN_URL         — content script → background (open a new tab)
+//   ANYLLM_EXTRACT_CONTEXT       — side panel → content script (chrome.tabs.sendMessage)
+//   ANYLLM_GET_CONTEXT_INFO      — side panel → content script
+//   ANYLLM_DELIVER_HANDOFF_NEW_TAB — side panel → background (open a new tab + inject prompt)
+//   ANYLLM_OPEN_URL              — content script → background (open a new tab)
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   const type = request?.type;

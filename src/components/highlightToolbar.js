@@ -178,7 +178,7 @@ function onMouseUp(e) {
 
 /**
  * Initialise the selection listener for highlights.
- * @param {import('../adapters/adapter.js').PlatformAdapter} adapterRef 
+ * @param {import('../services/adapter.js').PlatformAdapter} adapterRef 
  * @param {string} platform 
  * @param {string} conversationId 
  */

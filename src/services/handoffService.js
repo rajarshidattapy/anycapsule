@@ -13,7 +13,7 @@ import { pinMessage } from './pinService.js';
 
 /**
  * Generate the structured handoff prompt.
- * @param {import('../adapters/adapter.js').PlatformAdapter} adapterRef
+ * @param {import('./adapter.js').PlatformAdapter} adapterRef
  * @returns {string} The formatted prompt template
  */
 export function generateHandoffPrompt(adapterRef) {
