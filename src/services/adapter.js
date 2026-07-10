@@ -1,4 +1,4 @@
-// src/adapters/adapter.js
+// src/services/adapter.js
 // AnyLLM — Platform Adapters (Claude.ai, ChatGPT, Google Gemini)
 //
 // A single file covering every supported web platform:

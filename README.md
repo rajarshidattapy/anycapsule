@@ -23,9 +23,9 @@ anycapsule/
 │   ├── adapters/      # adapter.js — PlatformAdapter base + Claude/ChatGPT/Gemini adapters
 │   ├── components/     # Injected UI: side panel, banners, toolbars
 │   ├── services/       # Context extraction, pinboard, highlights, delete, handoff, storage
-│   ├── background.js    # Service worker — message routing, cross-tab handoff
+│   ├── background.js    # Service worker — message routing, side panel behavior
 │   ├── content.js        # Content script entry point
-│   └── popup.html/js/css # Toolbar popup
+│   └── sidepanel.html/js/css # Side panel UI (opens on toolbar icon click)
 ├── manifest.json      # Extension manifest (Manifest V3)
 ├── vite.config.js     # Build config (vite-plugin-web-extension)
 ├── cli/                # Python CLI package — "Git for LLM context" for coding agents
@@ -42,13 +42,15 @@ anycapsule/
 
 A Manifest V3 extension that works inside the conversation itself — no server, no account.
 
+Clicking the toolbar icon opens a **Chrome side panel** (not a popup dropdown) that stays docked next to the page. Pins, highlights, and extracted context are rendered natively inside that panel — nothing is injected as a floating overlay on top of the conversation.
+
 **Features**
 
-- **Extract Context** — scans the thread for decisions, next steps, code blocks, and topics, then condenses it into a structured summary.
-- **Context Handoff** — packages that extraction into a ready-to-paste briefing. Deliver it via clipboard, the pinboard, or straight into a new tab on another platform.
-- **Pinboard** — pin any message, reorder by drag-and-drop, persisted per conversation.
-- **Highlights** — select text and mark it yellow, green, or red; anchored to the DOM via relative XPath so it survives reloads.
-- **Soft Delete & Bulk Mode** — hide messages from view locally (never mutates the actual conversation), toggle visibility, or bulk-select and clear several at once.
+- **Extract Context** — scans the thread for decisions, next steps, code blocks, and topics, then condenses it into a structured summary, shown in the side panel's Context tab.
+- **Context Handoff** — turns that extraction into a ready-to-paste briefing, right there in the panel. Copy to clipboard or send it straight into a new Claude/ChatGPT/Gemini tab.
+- **Pins** — pin any message from its hover toolbar; the pinned list, with unpin, lives in the side panel's Pins tab (not a floating panel on the page).
+- **Highlights** — select text and mark it yellow, green, or red; anchored to the DOM via relative XPath so it survives reloads. The list of highlights, with remove, lives in the side panel's Highlights tab.
+- **Soft Delete & Bulk Mode** — hide messages from view locally (never mutates the actual conversation), toggle visibility, or bulk-select and clear several at once, from the side panel's Tools tab.
 - **Local-first storage** — everything lives in `chrome.storage` on your machine.
 
 **Supported platforms:** `claude.ai`, `chat.openai.com` / `chatgpt.com`, `gemini.google.com`.
@@ -56,16 +58,19 @@ A Manifest V3 extension that works inside the conversation itself — no server,
 ### Architecture
 
 ```
-popup.js ──message──▶ content.js ──▶ adapters/adapter.js   (DOM in, structured messages out)
-                                  └─▶ services/*             (contextExtractor, pinService,
-                                                               highlightService, deleteService,
-                                                               handoffService, storage)
-                                  └─▶ components/*           (ContextSidePanel, PinboardPanel,
-                                                               HighlightsPanel, HandoffBanner)
-background.js  ── service worker: install lifecycle, cross-tab handoff delivery
+sidepanel.js ──message──▶ content.js ──▶ services/adapter.js  (DOM in, structured messages out)
+     │                                └─▶ services/*            (contextExtractor, pinService,
+     │                                                            highlightService, deleteService,
+     │                                                            handoffService, storage)
+     │                                └─▶ components/*          (messageToolbar, highlightToolbar,
+     │                                                            HandoffBanner)
+     └──reads/writes chrome.storage directly for pins & highlights (no DOM dependency)
+background.js  ── service worker: side panel behavior, install lifecycle, cross-tab handoff delivery
 ```
 
-`src/adapters/adapter.js` holds the shared `PlatformAdapter` base class plus `ClaudeAdapter`, `ChatGPTAdapter`, and `GeminiAdapter` — one file, one interface (`getMessageElements()`, `extractMessageData()`, `getConversationId()`, etc.). Services never touch the DOM directly for data — they consume whatever the adapter returns, so adding a new platform means adding one class in that file, not touching every feature.
+`src/services/adapter.js` holds the shared `PlatformAdapter` base class plus `ClaudeAdapter`, `ChatGPTAdapter`, and `GeminiAdapter` — one file, one interface (`getMessageElements()`, `extractMessageData()`, `getConversationId()`, etc.). Services never touch the DOM directly for data — they consume whatever the adapter returns, so adding a new platform means adding one class in that file, not touching every feature.
+
+The side panel is its own extension page — it can't reach into the host page's DOM directly. It reads/writes pins and highlights straight from `chrome.storage` (pure data, no DOM needed) and relays anything that *does* need the live page — extracting context, removing a highlight span, toggling deleted messages — to `content.js` via `chrome.tabs.sendMessage`. `chrome.storage.onChanged` keeps the panel and the in-page toolbar in sync in both directions.
 
 ### Run it locally
 
@@ -74,7 +79,7 @@ npm install
 npm run dev     # vite build --watch
 ```
 
-Then in Chrome: `chrome://extensions` → enable **Developer mode** → **Load unpacked** → select `dist/`.
+Then in Chrome: `chrome://extensions` → enable **Developer mode** → **Load unpacked** → select `dist/`. Click the AnyLLM toolbar icon on Claude.ai, ChatGPT, or Gemini to open the side panel.
 
 ```bash
 npm run build    # one-off production build
