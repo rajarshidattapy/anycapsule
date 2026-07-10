@@ -14,7 +14,10 @@
 'use strict';
 
 import { getPins, unpinMessage } from './services/pinService.js';
-import { getNamespaceKey, DATA_TYPES } from './services/storage.js';
+import { getNamespaceKey, DATA_TYPES, getCollection, setCollection } from './services/storage.js';
+
+// Cap how many past extractions we keep per conversation (oldest dropped first).
+const MAX_CONTEXT_HISTORY = 20;
 
 // ── Elements ─────────────────────────────────────────────────────────────────
 
@@ -23,6 +26,7 @@ const tabs             = document.querySelectorAll('.sp-tab');
 const panes = {
   pins:    document.getElementById('pane-pins'),
   context: document.getElementById('pane-context'),
+  history: document.getElementById('pane-history'),
 };
 
 const pinsListEl      = document.getElementById('pins-list');
@@ -30,6 +34,8 @@ const pinsEmptyEl     = document.getElementById('pins-empty');
 const btnPackPage     = document.getElementById('btn-pack-page');
 const btnExtract      = document.getElementById('btn-extract');
 const contextResultEl = document.getElementById('context-result');
+const historyListEl   = document.getElementById('history-list');
+const historyEmptyEl  = document.getElementById('history-empty');
 
 // ── Tab switching ─────────────────────────────────────────────────────────────
 
@@ -48,6 +54,7 @@ let activeTabId = null;
 let currentPlatform = null;
 let currentConversationId = null;
 let pinStorageKey = null;
+let historyStorageKey = null;
 let _storageListenerAttached = false;
 
 // ── Active tab / platform detection ───────────────────────────────────────────
@@ -105,6 +112,7 @@ async function refreshForActiveTab() {
 
   attachStorageListeners();
   await loadPins();
+  await loadHistory();
 }
 
 function setUnsupported() {
@@ -114,7 +122,9 @@ function setUnsupported() {
   platformEl.style.color = '#ef4444';
   disableFeatureButtons();
   renderPins([]);
+  renderHistory([]);
   pinsEmptyEl.textContent = 'Open Claude.ai, ChatGPT, or Gemini to see your Pack here.';
+  historyEmptyEl.textContent = 'Open Claude.ai, ChatGPT, or Gemini to see Prime history here.';
 }
 
 function disableFeatureButtons() {
@@ -132,6 +142,7 @@ function enableFeatureButtons() {
 
 function attachStorageListeners() {
   pinStorageKey = getNamespaceKey(currentPlatform, currentConversationId, DATA_TYPES.PIN);
+  historyStorageKey = getNamespaceKey(currentPlatform, currentConversationId, DATA_TYPES.HANDOFF);
 
   if (_storageListenerAttached) return;
   _storageListenerAttached = true;
@@ -140,6 +151,9 @@ function attachStorageListeners() {
     if (area !== 'local') return;
     if (pinStorageKey && changes[pinStorageKey]) {
       renderPins(changes[pinStorageKey].newValue || []);
+    }
+    if (historyStorageKey && changes[historyStorageKey]) {
+      renderHistory(changes[historyStorageKey].newValue || []);
     }
   });
 }
@@ -244,8 +258,89 @@ btnExtract.addEventListener('click', () => {
       return;
     }
     renderContext(response.context);
+    saveContextHistory(response.context);
   });
 });
+
+// ── Prime history (past extractions) ──────────────────────────────────────────
+
+async function saveContextHistory(ctx) {
+  if (!currentPlatform || !currentConversationId) return;
+
+  const entry = {
+    id: `ctxhist::${Date.now()}`,
+    createdAt: Date.now(),
+    totalMessages: ctx.totalMessages,
+    promptText: ctx.handoffPrompt || '',
+  };
+
+  const existing = await getCollection(currentPlatform, currentConversationId, DATA_TYPES.HANDOFF);
+  const updated = [...existing, entry].slice(-MAX_CONTEXT_HISTORY);
+  await setCollection(currentPlatform, currentConversationId, DATA_TYPES.HANDOFF, updated);
+  renderHistory(updated);
+}
+
+async function loadHistory() {
+  const history = await getCollection(currentPlatform, currentConversationId, DATA_TYPES.HANDOFF);
+  renderHistory(history);
+}
+
+function renderHistory(history) {
+  const sorted = [...history].sort((a, b) => b.createdAt - a.createdAt);
+  historyListEl.innerHTML = '';
+  historyEmptyEl.style.display = sorted.length ? 'none' : 'block';
+
+  for (const entry of sorted) {
+    const li = document.createElement('li');
+    li.className = 'sp-card';
+
+    const head = document.createElement('div');
+    head.className = 'sp-card-head';
+    const dateTag = document.createElement('span');
+    dateTag.className = 'sp-card-role';
+    dateTag.textContent = new Date(entry.createdAt).toLocaleString();
+    const countTag = document.createElement('span');
+    countTag.className = 'sp-card-role';
+    countTag.textContent = `${entry.totalMessages} msgs`;
+    head.appendChild(dateTag);
+    head.appendChild(countTag);
+
+    const textEl = document.createElement('div');
+    textEl.className = 'sp-card-text';
+    textEl.textContent = entry.promptText;
+
+    const actions = document.createElement('div');
+    actions.className = 'sp-card-actions';
+
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'sp-card-action-btn';
+    copyBtn.textContent = 'Copy';
+    copyBtn.addEventListener('click', () => {
+      navigator.clipboard.writeText(entry.promptText).then(() => {
+        copyBtn.textContent = 'Copied!';
+        setTimeout(() => { copyBtn.textContent = 'Copy'; }, 1500);
+      });
+    });
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'sp-card-action-btn';
+    deleteBtn.textContent = 'Delete';
+    deleteBtn.addEventListener('click', async () => {
+      const current = await getCollection(currentPlatform, currentConversationId, DATA_TYPES.HANDOFF);
+      const filtered = current.filter((h) => h.id !== entry.id);
+      await setCollection(currentPlatform, currentConversationId, DATA_TYPES.HANDOFF, filtered);
+      renderHistory(filtered);
+    });
+
+    actions.appendChild(copyBtn);
+    actions.appendChild(deleteBtn);
+
+    li.appendChild(head);
+    li.appendChild(textEl);
+    li.appendChild(actions);
+    historyListEl.appendChild(li);
+  }
+}
 
 function appendSection(title, items, className) {
   if (!items.length) return;
@@ -266,22 +361,6 @@ function appendSection(title, items, className) {
 
 function renderContext(ctx) {
   contextResultEl.innerHTML = '';
-
-  // Topics
-  if (ctx.topics?.length) {
-    const wrap = document.createElement('div');
-    const heading = document.createElement('div');
-    heading.className = 'sp-section-heading';
-    heading.textContent = 'Topics';
-    wrap.appendChild(heading);
-    for (const topic of ctx.topics) {
-      const pill = document.createElement('span');
-      pill.className = 'sp-topic-pill';
-      pill.textContent = topic;
-      wrap.appendChild(pill);
-    }
-    contextResultEl.appendChild(wrap);
-  }
 
   // Decisions
   appendSection(
@@ -313,12 +392,8 @@ function renderContext(ctx) {
     contextResultEl.appendChild(wrap);
   }
 
-  // Handoff
+  // Handoff (no heading — just the prompt + icon-only action buttons)
   const handoffWrap = document.createElement('div');
-  const handoffHeading = document.createElement('div');
-  handoffHeading.className = 'sp-section-heading';
-  handoffHeading.textContent = 'Handoff';
-  handoffWrap.appendChild(handoffHeading);
 
   const textarea = document.createElement('textarea');
   textarea.className = 'sp-handoff-textarea';
@@ -329,15 +404,26 @@ function renderContext(ctx) {
   const actionsRow = document.createElement('div');
   actionsRow.className = 'sp-handoff-actions';
 
-  const makeHandoffBtn = (label, targetPlatform) => {
+  const makeHandoffBtn = (label, targetPlatform, iconSrc) => {
     const btn = document.createElement('button');
-    btn.className = 'sp-btn';
-    btn.textContent = label;
+    btn.className = 'sp-btn sp-btn-icon';
+    btn.setAttribute('aria-label', label);
+    btn.title = label;
+
+    if (iconSrc) {
+      const img = document.createElement('img');
+      img.src = iconSrc;
+      img.alt = label;
+      btn.appendChild(img);
+    } else {
+      btn.textContent = '📋';
+    }
+
     btn.addEventListener('click', () => {
       if (targetPlatform === 'copy') {
         navigator.clipboard.writeText(ctx.handoffPrompt || '').then(() => {
-          btn.textContent = 'Copied!';
-          setTimeout(() => { btn.textContent = label; }, 1500);
+          btn.classList.add('copied');
+          setTimeout(() => { btn.classList.remove('copied'); }, 1200);
         });
         return;
       }
@@ -350,10 +436,10 @@ function renderContext(ctx) {
     return btn;
   };
 
-  actionsRow.appendChild(makeHandoffBtn('📋 Copy', 'copy'));
-  actionsRow.appendChild(makeHandoffBtn('Claude', 'claude'));
-  actionsRow.appendChild(makeHandoffBtn('ChatGPT', 'chatgpt'));
-  actionsRow.appendChild(makeHandoffBtn('Gemini', 'gemini'));
+  actionsRow.appendChild(makeHandoffBtn('Copy', 'copy'));
+  actionsRow.appendChild(makeHandoffBtn('Claude', 'claude', '/claude.png'));
+  actionsRow.appendChild(makeHandoffBtn('ChatGPT', 'chatgpt', '/chatgpt.jpg'));
+  actionsRow.appendChild(makeHandoffBtn('Gemini', 'gemini', '/gemini.webp'));
   handoffWrap.appendChild(actionsRow);
 
   contextResultEl.appendChild(handoffWrap);

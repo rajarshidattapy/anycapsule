@@ -36,16 +36,16 @@ function buildStyles() {
   display: none;
   align-items: center;
   gap: 4px;
-  background: rgba(15, 17, 27, 0.92);
-  border: 1px solid rgba(99, 102, 241, 0.28);
+  background: #000;
+  border: 1px solid #3b3b3b;
   border-radius: 10px;
   padding: 4px 6px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.45);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.55);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   transition: opacity 0.15s ease;
   pointer-events: auto;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: "Aptos", "Segoe UI", Helvetica, Arial, sans-serif;
 }
 
 #${TOOLBAR_ID}.anyllm-tb-visible {
@@ -53,7 +53,7 @@ function buildStyles() {
 }
 
 .anyllm-tb-btn {
-  background: transparent;
+  background: #000;
   border: none;
   cursor: pointer;
   padding: 5px 6px;
@@ -66,10 +66,10 @@ function buildStyles() {
 }
 
 .anyllm-tb-btn:hover {
-  background: rgba(99, 102, 241, 0.15);
+  background: rgba(255, 255, 255, 0.06);
   color: #c7d2fe;
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.45);
 }
 
 .anyllm-tb-btn:active {
@@ -77,7 +77,7 @@ function buildStyles() {
 }
 .anyllm-tb-btn.anyllm-tb-active {
   color: #818cf8;
-  background: rgba(99,102,241,0.18);
+  background: rgba(255,255,255,0.06);
 }
 .anyllm-tb-btn.anyllm-tb-pinned {
   color: #f59e0b;
@@ -94,14 +94,14 @@ function buildStyles() {
   bottom: calc(100% + 6px);
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(15,17,27,0.95);
+  background: #000;
   color: #e2e8f0;
   font-size: 10.5px;
   font-weight: 500;
   white-space: nowrap;
   padding: 3px 8px;
   border-radius: 5px;
-  border: 1px solid rgba(99,102,241,0.2);
+  border: 1px solid #3b3b3b;
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.15s;
@@ -112,7 +112,7 @@ function buildStyles() {
 .anyllm-tb-divider {
   width: 1px;
   height: 16px;
-  background: rgba(255,255,255,0.08);
+  background: #3b3b3b;
   margin: 0 2px;
 }
 

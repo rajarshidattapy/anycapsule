@@ -23,13 +23,16 @@ function ensureStyles() {
       position: absolute;
       z-index: 2147483640;
       display: none;
-      background: rgba(15, 17, 27, 0.95);
-      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: rgba(12, 12, 12, 0.94);
+      border: 1px solid #3b3b3b;
       border-radius: 8px;
-      padding: 4px 6px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-      gap: 6px;
+      padding: 5px 8px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      gap: 7px;
       align-items: center;
+      font-family: "Aptos", "Segoe UI", Helvetica, Arial, sans-serif;
       transition: opacity 0.15s ease, transform 0.15s ease;
       transform: translateY(5px);
       opacity: 0;
@@ -40,16 +43,17 @@ function ensureStyles() {
       opacity: 1;
     }
     .anyllm-swatch {
-      width: 18px;
-      height: 18px;
+      width: 17px;
+      height: 17px;
       border-radius: 50%;
       cursor: pointer;
       border: 2px solid transparent;
-      transition: transform 0.1s ease, border-color 0.1s ease;
+      transition: transform 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
     }
     .anyllm-swatch:hover {
-      transform: scale(1.15);
-      border-color: rgba(255, 255, 255, 0.6);
+      transform: scale(1.18);
+      border-color: #fff;
+      box-shadow: 0 0 0 2px #fff;
     }
     .anyllm-swatch[data-color="yellow"] { background-color: #facc15; }
     .anyllm-swatch[data-color="green"]  { background-color: #4ade80; }

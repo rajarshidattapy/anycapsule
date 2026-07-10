@@ -135,10 +135,11 @@ function ensureStyles() {
   transition: all 0.15s;
 }
 .anyllm-edit-btn.save {
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  color: #fff;
+  background: #fff;
+  color: #050505;
+  border: 1px solid #fff;
 }
-.anyllm-edit-btn.save:hover { background: linear-gradient(135deg, #4f46e5, #7c3aed); transform: translateY(-1px); }
+.anyllm-edit-btn.save:hover { background: rgba(255,255,255,0.88); transform: translateY(-1px); }
 .anyllm-edit-btn.cancel {
   background: rgba(255,255,255,0.06);
   border: 1px solid rgba(255,255,255,0.1);
@@ -395,8 +396,8 @@ function _showEditor(el, messageId, platform, conversationId, initialText, origi
   const toolbarRow = document.createElement('div');
   toolbarRow.className = 'anyllm-edit-toolbar';
 
-  const saveBtn   = _makeEditBtn('✓ Save', 'save');
-  const cancelBtn = _makeEditBtn('✕ Cancel', 'cancel');
+  const saveBtn   = _makeEditBtn('Save', 'save');
+  const cancelBtn = _makeEditBtn('Cancel', 'cancel');
 
   saveBtn.addEventListener('click', () => {
     const newText = textarea.value.trim();

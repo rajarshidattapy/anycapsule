@@ -18,7 +18,8 @@
 
     <nav class="sp-tabs" id="sp-tabs">
       <button class="sp-tab active" data-tab="pins" id="tab-pins">📦 Pack</button>
-      <button class="sp-tab" data-tab="context" id="tab-context">🫸 Push</button>
+      <button class="sp-tab" data-tab="context" id="tab-context">🫸 Prime</button>
+      <button class="sp-tab" data-tab="history" id="tab-history">🕘 History</button>
     </nav>
 
     <main class="sp-body">
@@ -29,10 +30,16 @@
         <ul class="sp-pin-list" id="pins-list"></ul>
       </section>
 
-      <!-- CONTEXT -->
+      <!-- CONTEXT / PRIME -->
       <section class="sp-pane" id="pane-context">
         <button id="btn-extract" class="sp-btn primary">✦ Extract</button>
         <div id="context-result"></div>
+      </section>
+
+      <!-- HISTORY -->
+      <section class="sp-pane" id="pane-history">
+        <p class="sp-empty" id="history-empty">No Prime history yet. Extract context to start building one.</p>
+        <ul class="sp-pin-list" id="history-list"></ul>
       </section>
     </main>
 

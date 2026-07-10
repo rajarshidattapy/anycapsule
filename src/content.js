@@ -690,7 +690,7 @@ async function initPinFeature(adapterRef, platform, conversationId) {
 async function initDeleteFeature(adapterRef, platform, conversationId) {
   // 1. Register delete toolbar action
   MessageToolbar.registerAction('delete', {
-    icon: '🗑',
+    icon: '🗑️',
     tooltip: 'Delete message (local only)',
     showFor: ['all'],
     groupBefore: true, // adds a visual divider after the pin button
@@ -740,7 +740,7 @@ async function initEditFeature(adapterRef, platform, conversationId) {
   //    Shown on ALL messages (user + AI); the spec says AI-only, but
   //    local editing is equally useful on both sides.
   MessageToolbar.registerAction('edit', {
-    icon: '✎️',
+    icon: '✒️',
     tooltip: 'Edit message (local only)',
     showFor: ['all'],
     groupBefore: false,
