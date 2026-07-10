@@ -9,7 +9,7 @@ It ships as two surfaces that share one idea:
 | 🧩 | **Browser Extension** | Claude.ai, ChatGPT, Gemini | `src/` (this repo root) |
 | ⌨️ | **CLI** (`anyllm-ctx`) | Claude Code, Codex, Agy, Kiro, Kilocode, OpenCode, Cursor | [`cli/`](cli/) |
 
-A marketing/demo page for both lives in [`landing/`](landing/).
+Demo: https://anyllm.vercel.app/
 
 ---
 
