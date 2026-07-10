@@ -108,13 +108,15 @@ code {
   height: 38px;
   border: 1px solid var(--line);
   border-radius: 50%;
-  object-fit: cover;
+  object-fit: contain;
+  padding: 4px;
   background: var(--black);
 }
 
 .brand.small .brand-mark {
   width: 30px;
   height: 30px;
+  padding: 3px;
 }
 
 .nav-links,
@@ -291,6 +293,7 @@ code {
   width: min(76%, 330px);
   aspect-ratio: 1;
   object-fit: contain;
+  filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.18));
 }
 
 .terminal {
@@ -549,6 +552,10 @@ tr:last-child td {
   margin: 0 auto 28px;
   border-radius: 50%;
   border: 1px solid var(--line-strong);
+  object-fit: contain;
+  padding: 8px;
+  background: var(--black);
+  filter: drop-shadow(0 0 18px rgba(255, 255, 255, 0.16));
 }
 
 .cta-block p {

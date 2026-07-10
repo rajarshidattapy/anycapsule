@@ -2,8 +2,7 @@
 
 > *Snapshot a dying AI coding session. Brief the next model in 30 seconds. Keep moving.*
 
-<img width="774" height="277" alt="anyllm banner" src="https://github.com/user-attachments/assets/9fdfee65-a851-4605-9425-49071c8b5dd9" />
-
+![anyllm logo](./image.png)
 You're deep in a Claude Code session. Context window fills. Or you want a second opinion in Codex. Or you switch machines. Either way — the next tool needs the whole project explained again.
 
 **anyllm** snapshots that session into a compact briefing and injects it anywhere: paste it, push it to a browser tab, or let a slash command do it automatically in any of 7 supported AI coding CLIs.
