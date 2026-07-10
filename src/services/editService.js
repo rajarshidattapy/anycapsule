@@ -667,7 +667,7 @@ function _applyEditToDOM(el, record) {
  * Re-apply all stored edits for a conversation after a page load.
  * Must be called after the MutationObserver has stamped `data-anyllm-msg-id` attributes.
  *
- * @param {import('../adapters/baseAdapter.js').PlatformAdapter} adapterRef
+ * @param {import('../adapters/adapter.js').PlatformAdapter} adapterRef
  * @param {string} platform
  * @param {string} conversationId
  * @returns {Promise<number>}  — count of edits re-applied

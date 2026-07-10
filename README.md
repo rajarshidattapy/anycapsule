@@ -2,6 +2,8 @@
 
 Every AI conversation ends somewhere — quota runs out, the context window fills, you switch tools, or you just come back tomorrow. **AnyLLM** snapshots what happened and hands it to whatever comes next.
 
+![alt text](landing/landing.png)
+
 It ships as two surfaces that share one idea:
 
 | | Surface | Carries context between | Where it lives |
@@ -18,7 +20,7 @@ Demo: https://anyllm.vercel.app/
 ```
 anycapsule/
 ├── src/              # Browser extension source (Manifest V3)
-│   ├── adapters/      # Per-platform DOM adapters (Claude / ChatGPT / Gemini)
+│   ├── adapters/      # adapter.js — PlatformAdapter base + Claude/ChatGPT/Gemini adapters
 │   ├── components/     # Injected UI: side panel, banners, toolbars
 │   ├── services/       # Context extraction, pinboard, highlights, delete, handoff, storage
 │   ├── background.js    # Service worker — message routing, cross-tab handoff
@@ -54,7 +56,7 @@ A Manifest V3 extension that works inside the conversation itself — no server,
 ### Architecture
 
 ```
-popup.js ──message──▶ content.js ──▶ adapters/*Adapter.js   (DOM in, structured messages out)
+popup.js ──message──▶ content.js ──▶ adapters/adapter.js   (DOM in, structured messages out)
                                   └─▶ services/*             (contextExtractor, pinService,
                                                                highlightService, deleteService,
                                                                handoffService, storage)
@@ -63,7 +65,7 @@ popup.js ──message──▶ content.js ──▶ adapters/*Adapter.js   (DOM
 background.js  ── service worker: install lifecycle, cross-tab handoff delivery
 ```
 
-Every platform adapter implements the same `PlatformAdapter` interface (`src/adapters/baseAdapter.js`): `getMessageElements()`, `extractMessageData()`, `getConversationId()`, etc. Services never touch the DOM directly for data — they consume whatever the adapter returns, so adding a new platform means writing one adapter, not touching every feature.
+`src/adapters/adapter.js` holds the shared `PlatformAdapter` base class plus `ClaudeAdapter`, `ChatGPTAdapter`, and `GeminiAdapter` — one file, one interface (`getMessageElements()`, `extractMessageData()`, `getConversationId()`, etc.). Services never touch the DOM directly for data — they consume whatever the adapter returns, so adding a new platform means adding one class in that file, not touching every feature.
 
 ### Run it locally
 

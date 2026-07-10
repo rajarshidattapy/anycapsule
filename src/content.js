@@ -17,9 +17,7 @@
 
 'use strict';
 
-import { ClaudeAdapter }    from './adapters/claudeAdapter.js';
-import { ChatGPTAdapter }   from './adapters/chatgptAdapter.js';
-import { GeminiAdapter }    from './adapters/geminiAdapter.js';
+import { ClaudeAdapter, ChatGPTAdapter, GeminiAdapter } from './adapters/adapter.js';
 import { extractContext }   from './services/contextExtractor.js';
 import { ContextSidePanel } from './components/ContextSidePanel.js';
 import PinService            from './services/pinService.js';
@@ -53,7 +51,7 @@ const CONTAINER_POLL_TIMEOUT_MS = 30_000; // Give up after 30 s
 
 const hostname = window.location.hostname;
 
-/** @type {import('./adapters/baseAdapter.js').PlatformAdapter | null} */
+/** @type {import('./adapters/adapter.js').PlatformAdapter | null} */
 let adapter = null;
 
 if (hostname.includes('claude.ai')) {
@@ -102,7 +100,7 @@ const seenMessageIds = new Set();
 /**
  * Initialise the content script for a detected platform.
  *
- * @param {import('./adapters/baseAdapter.js').PlatformAdapter} adapter
+ * @param {import('./adapters/adapter.js').PlatformAdapter} adapter
  */
 async function init(adapter) {
   const platform = adapter.getPlatformIdentifier();
@@ -144,7 +142,7 @@ async function init(adapter) {
  * Run context extraction against the current adapter and render the side panel.
  * Called from the popup via chrome.runtime.sendMessage or on demand.
  *
- * @param {import('./adapters/baseAdapter.js').PlatformAdapter} adapterRef
+ * @param {import('./adapters/adapter.js').PlatformAdapter} adapterRef
  */
 function runContextExtraction(adapterRef) {
   const ctx = extractContext(adapterRef);
@@ -293,7 +291,7 @@ document.addEventListener('anyllm:messageAdded', (e) => {
  * Poll until the chat container appears or the timeout expires.
  * Returns null on timeout.
  *
- * @param {import('./adapters/baseAdapter.js').PlatformAdapter} adapter
+ * @param {import('./adapters/adapter.js').PlatformAdapter} adapter
  * @returns {Promise<Element | null>}
  */
 function waitForChatContainer(adapter) {
@@ -323,7 +321,7 @@ function waitForChatContainer(adapter) {
  * Scan all current message elements and emit 'anyllm:messageAdded' for any
  * not yet seen.
  *
- * @param {import('./adapters/baseAdapter.js').PlatformAdapter} adapter
+ * @param {import('./adapters/adapter.js').PlatformAdapter} adapter
  */
 function processCurrentMessages(adapter) {
   const elements = adapter.getMessageElements();
@@ -347,7 +345,7 @@ function processCurrentMessages(adapter) {
 /**
  * Process a single newly-detected message element.
  *
- * @param {import('./adapters/baseAdapter.js').PlatformAdapter} adapter
+ * @param {import('./adapters/adapter.js').PlatformAdapter} adapter
  * @param {Element} el
  * @param {number} index
  */
@@ -369,7 +367,7 @@ function processNewMessage(adapter, el, index) {
 
 /**
  * Check for a token limit warning and emit the event once if found.
- * @param {import('./adapters/baseAdapter.js').PlatformAdapter} adapter
+ * @param {import('./adapters/adapter.js').PlatformAdapter} adapter
  */
 let _tokenLimitWarned = false;
 function checkTokenLimit(adapter) {
@@ -398,7 +396,7 @@ let debounceTimer = null;
  * Uses a debounce so streaming updates (dozens of mutations per second)
  * are collapsed into a single processing pass.
  *
- * @param {import('./adapters/baseAdapter.js').PlatformAdapter} adapter
+ * @param {import('./adapters/adapter.js').PlatformAdapter} adapter
  * @param {Element} container
  */
 function startMutationObserver(adapter, container) {
@@ -432,7 +430,7 @@ function startMutationObserver(adapter, container) {
  * Watch for URL changes via history.pushState / popstate.
  * When a navigation is detected, reset state and re-initialise.
  *
- * @param {import('./adapters/baseAdapter.js').PlatformAdapter} adapter
+ * @param {import('./adapters/adapter.js').PlatformAdapter} adapter
  */
 function watchForNavigation(adapter) {
   let lastPath = window.location.pathname;
@@ -454,7 +452,7 @@ function watchForNavigation(adapter) {
 
 /**
  * Handle a detected SPA navigation.
- * @param {import('./adapters/baseAdapter.js').PlatformAdapter} adapter
+ * @param {import('./adapters/adapter.js').PlatformAdapter} adapter
  * @param {string} previousPath
  */
 function onNavigate(adapter, previousPath) {
@@ -497,7 +495,7 @@ async function buildPinnedSet(platform, conversationId) {
  *   3. Render pinboard panel
  *   4. Restore pinned-state outline rings on all existing message elements
  *
- * @param {import('./adapters/baseAdapter.js').PlatformAdapter} adapterRef
+ * @param {import('./adapters/adapter.js').PlatformAdapter} adapterRef
  * @param {string} platform
  * @param {string} conversationId
  */
@@ -599,7 +597,7 @@ async function initPinFeature(adapterRef, platform, conversationId) {
  *
  * Called from the anyllm:adapterReady handler after initPinFeature.
  *
- * @param {import('./adapters/baseAdapter.js').PlatformAdapter} adapterRef
+ * @param {import('./adapters/adapter.js').PlatformAdapter} adapterRef
  * @param {string} platform
  * @param {string} conversationId
  */
@@ -647,7 +645,7 @@ async function initDeleteFeature(adapterRef, platform, conversationId) {
  *   2. Re-apply persisted local edits to DOM (after a 2.5s delay to let
  *      the MutationObserver stamp message IDs first)
  *
- * @param {import('./adapters/baseAdapter.js').PlatformAdapter} adapterRef
+ * @param {import('./adapters/adapter.js').PlatformAdapter} adapterRef
  * @param {string} platform
  * @param {string} conversationId
  */

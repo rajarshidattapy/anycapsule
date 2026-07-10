@@ -421,7 +421,7 @@ function buildHandoffPrompt(ctx) {
 /**
  * Extract rich context from a set of messages returned by a platform adapter.
  *
- * @param {import('../adapters/baseAdapter.js').PlatformAdapter} adapter
+ * @param {import('../adapters/adapter.js').PlatformAdapter} adapter
  * @returns {ExtractedContext | null}  null if no messages found
  */
 function extractContext(adapter) {
